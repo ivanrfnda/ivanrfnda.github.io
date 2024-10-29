@@ -1,0 +1,2955 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Veloci Run</title>
+	<link rel="stylesheet" href="https://unpkg.com/swiper/swiper-bundle.min.js">
+	<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+
+<header>
+	<a href="#" class="logo"><i class="fas fa-home"></i>Veloci Run</a>
+	<nav class="navbar">
+		<a href="#home">Introduction</a>
+		<a href="#step">Tutorial</a>
+		<a href="#code">Code</a>
+		<a href="#ourteam">Our Team</a>
+	</nav>
+	<div class="icons">
+		<i class="fas fa-bars" id="menu-bars"></i>
+		<i class="fas fa-search" id="search-icon"></i>
+		<i class="fas fa-envelope"></i>
+		<i class="fab fa-facebook"></i>
+		<i class="fab fa-whatsapp"></i>
+		<i class="fas fa-heart"></i>
+		<i class="fas fa-shopping-cart"></i>
+	</div>
+</header>
+<form action="" id="search-form">
+	<input type="search" placeholder="Pencarian disini.." name="" id="search-box">
+	<label for="search-form" class="fas fa-search"></label>
+	<i class="fas fa-times" id="close"></i>
+</form>
+
+<section id="home" class="home">
+	<div class="swiper-container home-slider">
+		<div class="swiper-wrapper wrapper">
+			<div class="swiper-slide slide">
+				<div class="content">
+					<h3>Veloci Run</h3>
+					<p>Veloci Run adalah permainan game endless runner seru seekor Velociraptor yang berlari melintasi padang pasir, 
+						menghindari rintangan seperti kaktus dan pterodactyl yang terbang. Cobalah bertahan sejauh mungkin tanpa menabrak apapun! </p>
+				</div>
+				<div class="image">
+					<img src="vc1.png" alt="">
+					<img src="vc2.png" alt="">
+					<img src="vc3.png" alt="">
+				</div>
+		</div>
+		<div class="swiper-pagination"></div>
+	</div>
+</section>
+
+<section class="step" id="step">
+	<h1 class="heading">Step Pembuatan Game</h1>
+	<div class="box-container">
+		<div class="box">
+			<p> 1. Buat/cari sprite untuk karakter dinosaurus dan rintangan yang muncul secara acak. 
+				Kemudian render seluruh model yang telah disiapkan. </p>
+			<p> 2. Tambahkan animasi dasar seperti lompatan dan gerakan lari. </p>
+			<p> 3. Atur kecepatan, gravitasi, dan collision detection untuk interaksi realistis antara karakter dan rintangan. </p>
+			<p> 4. Mengimplementasikan sistem skor yang akan terus bertambah selama pemain bertahan. </p>
+			<p> 5. Buat main menu sebagai halaman awal game dengan tombol mulai untuk memainkan game dan tombol exit untuk keluar dari game. </p>
+		</div>
+	</div>
+</section>
+
+
+
+<section class="code" id="code">
+    <h1 class="heading">Code</h1>
+    <p class="description">Veloci Run.cpp</p>
+    <div class="code-box">
+        <pre><code>
+#include "VelociRun.h"
+
+Engine::VelociRun::VelociRun() {
+	tempPlx = NULL;
+}
+
+Engine::VelociRun::~VelociRun() {
+	delete bgTex;
+	delete veloTex;
+
+	delete bgSprt;
+	delete veloSprt;
+	delete shadow;
+
+	delete tempPlx;
+
+	delete score;
+	delete hiScore;
+	delete gameOver;
+	delete pause;
+	delete hint;
+
+	delete bgm;
+}
+
+void Engine::VelociRun::Init() {
+	//Seed for rand
+	srand(static_cast<unsigned>(time(0)));
+
+	//Global parameter initial value
+	globalXVel = 0.5;
+	maxElapsedTime = 1000;
+	numObjectsInPool = 4;
+	numObjectPerSpawn = 1;
+	currentHighScore = ReadHighScore();
+
+	//audio
+	bgm = (new Music("2021-08-16_-_8_Bit_Adventure_-_www.FesliyanStudios.com.ogg"))->SetVolume(30)->Play(true);
+
+	jumpsfx = (new Sound("jump.wav"))->SetVolume(50);
+
+	//bg
+	bgTex = new Texture("Desert_Sky.png");
+
+	bgSprt = new Sprite(bgTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+	bgSprt->SetSize((float)game->GetSettings()->screenWidth, (float)game->GetSettings()->screenHeight);
+
+	//Dark overlay
+	darkOverlay = new Texture("Dark_Overlay.png");
+
+	overlay = new Sprite(darkOverlay, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+	overlay->SetSize((float)game->GetSettings()->screenWidth, (float)game->GetSettings()->screenHeight);
+
+	//Parallax background
+	
+	//Create Backgrounds
+	//Layer 1
+	tempPlx = new Parallax(CreateBgSprite("Desert_Dunes.png"));
+	tempPlx->SetAnchor();
+	dunes.push_back(tempPlx);
+
+	tempPlx = new Parallax(CreateBgSprite("Desert_Dunes.png"));
+	tempPlx->SetFollow();
+	tempPlx->SetPosition(game->GetSettings()->screenWidth, 0);
+	dunes.push_back(tempPlx);
+
+	dunes[0]->SetLeftParallax(dunes[1]);
+	dunes[1]->SetLeftParallax(dunes[0]);
+
+	//Layer 2
+	tempPlx = new Parallax(CreateBgSprite("Desert_Cacti_Dunes.png"));
+	tempPlx->SetAnchor();
+	cactiDunes.push_back(tempPlx);
+
+	tempPlx = new Parallax(CreateBgSprite("Desert_Cacti_Dunes.png"));
+	tempPlx->SetFollow();
+	tempPlx->SetPosition(game->GetSettings()->screenWidth, 0);
+	cactiDunes.push_back(tempPlx);
+
+	cactiDunes[0]->SetLeftParallax(cactiDunes[1]);
+	cactiDunes[1]->SetLeftParallax(cactiDunes[0]);
+
+	//Layer 3
+	tempPlx = new Parallax(CreateBgSprite("Desert_Ground.png"));
+	tempPlx->SetAnchor();
+	ground.push_back(tempPlx);
+
+	tempPlx = new Parallax(CreateBgSprite("Desert_Ground.png"));
+	tempPlx->SetFollow();
+	tempPlx->SetPosition(game->GetSettings()->screenWidth, 0);
+	ground.push_back(tempPlx);
+
+	ground[0]->SetLeftParallax(ground[1]);
+	ground[1]->SetLeftParallax(ground[0]);
+
+	//Obstacles
+	Texture* obsTex = new Texture("Desert_Obstacles.png");
+	Texture* shadowTex = new Texture("Shadow.png");
+
+	for (int i = 0; i < numObjectsInPool; i++) {
+		Obstacles* o = new Obstacles(CreateObsSprite(obsTex), CreateShadowSprite(shadowTex));
+		o->GetSprite()->SetBoundingBoxSize(o->GetWidth() - (12 * o->GetSprite()->GetScale()), o->GetHeight() - (3 * o->GetSprite()->GetScale()));
+		obstacles.push_back(o);
+	}
+
+
+	//Velociraptor placeholder + shadow
+	veloTex = new Texture("DinoSprites - vita.png");
+	veloSprt = new Sprite(veloTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+	
+	shadow = new Sprite(shadowTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+
+	//Velociraptor Anim & Bounding Box & Shadow
+	veloSprt->SetNumXFrames(24)->SetNumYFrames(1)->AddAnimation("idle-run", 4, 9)->AddAnimation("duck", 17, 23)->SetScale(5)->SetAnimationDuration(60)->SetPosition(300, game->GetSettings()->screenHeight / 11);
+
+	shadow->SetScale(4)->SetPosition(300 + 2 * veloSprt->GetScale(), game->GetSettings()->screenHeight / 11 - veloSprt->GetScale());
+
+	veloSprt->SetBoundingBoxSize(veloSprt->GetScaleWidth() - (10 * veloSprt->GetScale()), veloSprt->GetScaleHeight() - (8 * veloSprt->GetScale()));
+
+	//Texts placeholder
+	score = new Text("lucon.ttf", 24, game->GetDefaultTextShader());
+	score->SetScale(1.0f)->SetColor(0, 0, 0)->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()));
+
+	hiScore = new Text("lucon.ttf", 24, game->GetDefaultTextShader());
+	hiScore->SetScale(1.0f)->SetColor(0, 0, 0)->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())));
+
+	hint = new Text("lucon.ttf", 24, game->GetDefaultTextShader());
+	hint->SetScale(1.0f)->SetColor(0, 0, 0)->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())));
+
+	gameOver = new Text("8-bit Arcade In.ttf", 100, game->GetDefaultTextShader());
+	gameOver->SetScale(1.0f)->SetColor(220, 0, 20)->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3)->SetText("Game Over")->CenterTextX();
+
+	pause = new Text("8-bit Arcade In.ttf", 100, game->GetDefaultTextShader());
+	pause->SetScale(1.0f)->SetColor(0, 0, 0)->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3)->SetText("Paused")->CenterTextX();
+
+	//Input Mapping
+	game->GetInputManager()->AddInputMapping("Jump", SDLK_UP)->AddInputMapping("Jump", SDLK_SPACE)->AddInputMapping("Main-menu", SDLK_ESCAPE)->AddInputMapping("Pause", SDLK_TAB)->AddInputMapping("Duck", SDLK_DOWN)->AddInputMapping("Reset", SDLK_r);
+
+	//Button input mapping
+	game->GetInputManager()->AddInputMapping("prev", SDLK_LEFT)->AddInputMapping("next", SDLK_RIGHT)->AddInputMapping("press", SDLK_RETURN);
+
+	//Buttons
+	//Button texture
+	Texture* buttonTex = new Texture("Circular_Buttons.png");
+
+	//Resume button
+	Sprite* resumeSprt = new Sprite(buttonTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+
+	resumeSprt->SetNumXFrames(4)->SetNumYFrames(4)->AddAnimation("normal", 0, 0)->AddAnimation("hover", 0, 3, true)->AddAnimation("press", 3, 3)->SetScale(5)->SetAnimationDuration(100);
+
+	Button* resumeButton = new Button(resumeSprt, "resume");
+	resumeButton->SetPosition((game->GetSettings()->screenWidth / 2) - (1.5 * resumeSprt->GetScaleWidth()),
+		(game->GetSettings()->screenHeight / 2) - (resumeSprt->GetScaleHeight()));
+	buttons.push_back(resumeButton);
+
+	//Restart button
+	Sprite* restartSprt = new Sprite(buttonTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+
+	restartSprt->SetNumXFrames(4)->SetNumYFrames(4)->AddAnimation("normal", 4, 4)->AddAnimation("hover", 4, 7, true)->AddAnimation("press", 7, 7)->SetScale(5)->SetAnimationDuration(100);
+
+	Button* restartButton = new Button(restartSprt, "restart");
+	restartButton->SetPosition((game->GetSettings()->screenWidth / 2) - (1.5 * restartSprt->GetScaleWidth()),
+		(game->GetSettings()->screenHeight / 2) - (restartSprt->GetScaleHeight()));
+	buttons.push_back(restartButton);
+
+	//Exit button
+	Sprite* exitSprt = new Sprite(buttonTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+
+	exitSprt->SetNumXFrames(4)->SetNumYFrames(4)->AddAnimation("normal", 12, 12)->AddAnimation("hover", 12, 15, true)->AddAnimation("press", 15, 15)->SetScale(5)->SetAnimationDuration(100);
+
+	Button* exitButton = new Button(exitSprt, "exit");
+	exitButton->SetPosition((game->GetSettings()->screenWidth / 2) + (0.5 * exitSprt->GetScaleWidth()),
+		(game->GetSettings()->screenHeight / 2) - (exitSprt->GetScaleHeight()));
+	buttons.push_back(exitButton);
+}
+
+void Engine::VelociRun::Update() {
+	//Game States
+	if (!isGameOver && !isPaused) {
+		//Spawn obstacles
+		if (elapsedTime >= maxElapsedTime) {
+			SpawnObstacles();
+			elapsedTime = 0;
+		}
+
+		elapsedTime += game->GetGameTime();
+
+		//Scoring & Global Velocity
+		if (globalCount % 20 == 0 && globalCount != 0) {
+			gameScore += 1;
+		}
+
+		if (globalCount % 40 == 0 && globalCount != 0 && globalXVel <= 1) {
+			globalXVel += 0.005;
+			globalCount = 0;
+		}
+
+		globalCount += 1;
+
+		//Update all obstacles velocity
+		for (Obstacles* o : obstacles) {
+			o->SetVelocity(globalXVel);
+		}
+
+		//Update all bg velocity
+		for (Parallax* o : dunes) {
+			o->SetVelocity(globalXVel * 1 / 10);
+		}
+		for (Parallax* o : cactiDunes) {
+			o->SetVelocity(globalXVel * 2 / 5);
+		}
+		for (Parallax* o : ground) {
+			o->SetVelocity(globalXVel);
+		}
+
+		//Detect collision
+		for (Obstacles* o : obstacles) {
+			if (!o->IsNoUse()) {
+				if (o->GetSprite()->GetBoundingBox()->CollideWith(veloSprt->GetBoundingBox())) {
+					isGameOver = true;
+					buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+					currButtonIndex = 1;
+					buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+				}
+			}
+		}
+
+		//Display texts
+		score->SetText("Score : " + to_string(gameScore));
+		hiScore->SetText("High Score : " + to_string(currentHighScore));
+		hint->SetText("Up & Down to Jump and Duck");
+
+		//Velociraptor temp pos saver and def anim
+		vec2 oldVeloPos = veloSprt->GetPosition();
+		vx = oldVeloPos.x, vy = oldVeloPos.y;
+
+		veloSprt->PlayAnim("idle-run");
+
+		//Input detections
+		//Main menu
+		if (game->GetInputManager()->IsKeyPressed("Main-menu")) {
+			//Reset global parameters
+			elapsedTime = 0;
+			yVelocity = 0;
+			globalXVel = 0.5;
+			globalCount = 0;
+			gameScore = 0;
+			jump = false;
+			duck = false;
+
+			//Reset velociraptor's pos
+			vx = 300, vy = game->GetSettings()->screenHeight / 11;
+			veloSprt->SetPosition(vx, vy);
+
+			//Reset all obstacles
+			for (Obstacles* o : obstacles) {
+				o->SetNoUse();
+				o->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+				o->SetVelocity(globalXVel);
+			}
+			
+			//Change screen
+			ScreenManager::GetInstance(game)->SetCurrentScreen("mainmenu");
+
+			return;
+		}
+
+		//Pause
+		if (game->GetInputManager()->IsKeyPressed("Pause")) {
+			//Still haven't added a pause screen yet
+			//ScreenManager::GetInstance(game)->SetCurrentScreen("mainmenu");
+
+			//Change game state and button state
+			isPaused = true;
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			currButtonIndex = 0;
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+			return;
+		}
+
+		//Jump
+		if (game->GetInputManager()->IsKeyPressed("Jump") && !jump && !duck) {
+			//Clamping
+			float delta = game->GetGameTime();
+			float maxDelta = 1000.0f / 30.0f;
+
+			if (delta >= maxDelta) {
+				delta = maxDelta;
+			}
+			//Set gravity and yVelocity
+			float ratio = (delta / 16.7f);
+			gravity = 0.05f * ratio;
+			yVelocity = 1.0f;
+			jump = true;
+			jumpsfx->Play(false);
+		}
+		//Jump physics
+		if (vy > game->GetSettings()->screenHeight / 11) {
+			yVelocity -= gravity;
+		}
+		else if (vy < game->GetSettings()->screenHeight / 11) {
+			jump = false;
+			yVelocity = 0;
+			vy = game->GetSettings()->screenHeight / 11;
+		}
+
+		if (game->GetInputManager()->IsKeyReleased("Jump") && jump) {
+			if (yVelocity > 0.8) {
+				yVelocity = 0.8;
+			}
+		}
+
+		vy += yVelocity * game->GetGameTime();
+		veloSprt->SetPosition(vx, vy);
+
+		//Duck
+		if (game->GetInputManager()->IsKeyPressed("Duck") && !jump) {
+			//Play duck anim
+			veloSprt->PlayAnim("duck");
+			//Set bounding box size for ducking
+			veloSprt->SetBoundingBoxSize(veloSprt->GetScaleWidth() - (10 * veloSprt->GetScale()), veloSprt->GetScaleHeight() - (12 * veloSprt->GetScale()));
+			duck = true;
+		}
+
+		if (game->GetInputManager()->IsKeyReleased("Duck") && duck) {
+			//Reset BBox to default
+			veloSprt->SetBoundingBoxSize(veloSprt->GetScaleWidth() - (10 * veloSprt->GetScale()), veloSprt->GetScaleHeight() - (8 * veloSprt->GetScale()));
+			duck = false;
+		}
+
+		//Update
+		veloSprt->Update(game->GetGameTime());
+
+		for (Obstacles* o : obstacles) {
+			o->Update(game->GetGameTime());
+		}
+
+		//Update all bg
+		for (Parallax* o : dunes) {
+			o->Update(game->GetGameTime());
+		}
+		for (Parallax* o : cactiDunes) {
+			o->Update(game->GetGameTime());
+		}
+		for (Parallax* o : ground) {
+			o->Update(game->GetGameTime());
+		}
+
+	}
+	else if (isPaused) {
+		//Input detections
+		//Previous
+		if (game->GetInputManager()->IsKeyPressed("prev")) {
+			// Set previous button to normal state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			// Prev Button
+			currButtonIndex = currButtonIndex > 0 ? currButtonIndex - 2 : currButtonIndex;
+			// Set current button to hover state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+		}
+
+		//Next
+		if (game->GetInputManager()->IsKeyPressed("next")) {
+			// Set previous button to normal state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			// Next Button
+			currButtonIndex = (currButtonIndex < (int)buttons.size() - 1) ? currButtonIndex + 2 : currButtonIndex;
+			// Set current button to hover state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+		}
+
+		//Press
+		if (game->GetInputManager()->IsKeyReleased("press")) {
+			// Set current button to press state
+			Button* b = buttons[currButtonIndex];
+			b->SetButtonState(Engine::ButtonState::PRESS);
+			// If start button then go to InGame, exit button then exit
+			if ("resume" == b->GetButtonName()) {
+				//Reset Text pos
+				score->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()))->SetColor(0, 0, 0);
+
+				hiScore->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())))->SetColor(0, 0, 0);
+
+				hint->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())))->SetColor(0, 0, 0);
+
+				//Change state
+				isPaused = false;
+
+				return;
+			}
+			else if ("exit" == b->GetButtonName()) {
+				//Reset global parameters
+				elapsedTime = 0;
+				globalCount = 0;
+				gameScore = 0;
+				jump = false;
+				duck = false;
+				isPaused = false;
+
+				//Reset velociraptor's pos
+				vx = 300, vy = game->GetSettings()->screenHeight / 11;
+				veloSprt->SetPosition(vx, vy);
+
+				//Reset all obstacles
+				for (Obstacles* o : obstacles) {
+					o->SetNoUse();
+					o->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+					o->SetVelocity(globalXVel);
+				}
+
+				//Change screen
+				ScreenManager::GetInstance(game)->SetCurrentScreen("mainmenu");
+
+				//Reset Text pos
+				score->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()))->SetColor(0, 0, 0);
+
+				hiScore->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())))->SetColor(0, 0, 0);
+
+				hint->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())))->SetColor(0, 0, 0);
+
+				return;
+			}
+		}
+
+		//Update all buttons
+		for (Button* b : buttons) {
+			b->Update(game->GetGameTime());
+		}
+
+		//Display texts
+		score->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3 - score->GetFontSize() * score->GetScale() * 1.5)->SetText("Score : " + to_string(gameScore))->SetColor(0, 0, 0)->CenterTextX();
+
+		hiScore->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3 - hiScore->GetFontSize() * hiScore->GetScale() * 2.5)->SetText("High Score : " + to_string(currentHighScore))->SetColor(0, 0, 0)->CenterTextX();
+
+		hint->SetText("");
+	}
+	else if (isGameOver) {
+		//Reset parameter
+		yVelocity = 0;
+		globalXVel = 0.5;
+
+		//High score check
+		if (gameScore > currentHighScore) {
+			WriteHighScore(gameScore);
+			currentHighScore = ReadHighScore();
+		}
+
+		//Input detections
+		//Previous
+		if (game->GetInputManager()->IsKeyPressed("prev")) {
+			// Set previous button to normal state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			// Prev Button
+			currButtonIndex = currButtonIndex > 1 ? currButtonIndex - 1 : currButtonIndex;
+			// Set current button to hover state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+		}
+
+		//Next
+		if (game->GetInputManager()->IsKeyPressed("next")) {
+			// Set previous button to normal state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			// Next Button
+			currButtonIndex = (currButtonIndex < (int)buttons.size() - 1) ? currButtonIndex + 1 : currButtonIndex;
+			// Set current button to hover state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+		}
+
+		//Press
+		if (game->GetInputManager()->IsKeyReleased("press")) {
+			// Set current button to press state
+			Button* b = buttons[currButtonIndex];
+			b->SetButtonState(Engine::ButtonState::PRESS);
+			// If start button then go to InGame, exit button then exit
+			if ("restart" == b->GetButtonName()) {
+				//Reset global parameters
+				elapsedTime = 0;
+				globalCount = 0;
+				gameScore = 0;
+				jump = false;
+				duck = false;
+				isGameOver = false;
+
+				//Reset velociraptor's pos
+				vx = 300, vy = game->GetSettings()->screenHeight / 11;
+				veloSprt->SetPosition(vx, vy);
+
+				//Reset all obstacles
+				for (Obstacles* o : obstacles) {
+					o->SetNoUse();
+					o->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+					o->SetVelocity(globalXVel);
+				}
+
+				//Reset Text pos
+				score->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()))->SetColor(0, 0, 0);
+
+				hiScore->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())))->SetColor(0, 0, 0);
+
+				hint->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())))->SetColor(0, 0, 0);
+
+				return;
+			}
+			else if ("exit" == b->GetButtonName()) {
+				//Reset global parameters
+				elapsedTime = 0;
+				globalCount = 0;
+				gameScore = 0;
+				jump = false;
+				duck = false;
+				isGameOver = false;
+
+				//Reset velociraptor's pos
+				vx = 300, vy = game->GetSettings()->screenHeight / 11;
+				veloSprt->SetPosition(vx, vy);
+
+				//Reset all obstacles
+				for (Obstacles* o : obstacles) {
+					o->SetNoUse();
+					o->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+					o->SetVelocity(globalXVel);
+				}
+
+				//Change screen
+				ScreenManager::GetInstance(game)->SetCurrentScreen("mainmenu");
+
+				//Reset Text pos
+				score->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()))->SetColor(0, 0, 0);
+
+				hiScore->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())))->SetColor(0, 0, 0);
+
+				hint->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())))->SetColor(0, 0, 0);
+
+				return;
+			}
+		}
+		
+		//Update all buttons
+		for (Button* b : buttons) {
+			b->Update(game->GetGameTime());
+		}
+
+		//Display texts
+		score->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3 - score->GetFontSize() * score->GetScale() * 1.5)->SetText("Score : " + to_string(gameScore))->SetColor(0, 0, 0)->CenterTextX();
+
+		hiScore->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3 - hiScore->GetFontSize() * hiScore->GetScale() * 2.5)->SetText("High Score : " + to_string(currentHighScore))->SetColor(0, 0, 0)->CenterTextX();
+
+		hint->SetText("");
+	}
+}
+
+void Engine::VelociRun::Draw() {
+	//Sky
+	bgSprt->Draw();
+
+	//All bg
+	for (Parallax* o : dunes) {
+		o->Draw();
+	}
+	for (Parallax* o : cactiDunes) {
+		o->Draw();
+	}
+	for (Parallax* o : ground) {
+		o->Draw();
+	}
+
+	//Velociraptor
+	shadow->Draw();
+	veloSprt->Draw();
+
+	//All obstacles
+	for (Obstacles* o : obstacles) {
+		o->Draw();
+	}
+	if (isPaused) {
+		overlay->Draw();
+
+		buttons[0]->Draw();
+		buttons[2]->Draw();
+
+		pause->Draw();
+	}
+
+	if (isGameOver) {
+		overlay->Draw();
+		
+		buttons[1]->Draw();
+		buttons[2]->Draw();
+
+		gameOver->Draw();
+	}
+
+	//Texts
+	score->Draw();
+	hiScore->Draw();
+	hint->Draw();
+}
+
+Engine::Sprite* Engine::VelociRun::CreateObsSprite(Texture* texture) {
+	return (new Sprite(texture, game->GetDefaultSpriteShader(), game->GetDefaultQuad()))->SetNumXFrames(3)->SetNumYFrames(2)->AddAnimation("obstacle1", 0, 0)->AddAnimation("obstacle2", 1, 1)->AddAnimation("obstacle3", 2, 2)->AddAnimation("obstacle4", 3, 4)->SetScale(4)->SetAnimationDuration(500);
+}
+
+Engine::Sprite* Engine::VelociRun::CreateShadowSprite(Texture* texture) {
+	return (new Sprite(texture, game->GetDefaultSpriteShader(), game->GetDefaultQuad()))->SetScale(4)->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+}
+
+void Engine::VelociRun::SpawnObstacles() {
+	int spawnCount = 0;
+	for (Obstacles* o : obstacles) {
+		if (spawnCount == numObjectPerSpawn) {
+			break;
+		}
+		if (o->IsNoUse()) {
+			unsigned int random = 1 + (rand() % 4);
+			//x and y position
+			float x = (float)(game->GetSettings()->screenWidth);
+			float y = game->GetSettings()->screenHeight / 11;
+			//y position of airborne obstacles
+			if (random > 3) {
+				y = game->GetSettings()->screenHeight / 11 + 70;
+			}
+			//Set position and play random animation
+			o->SetUse()->SetPosition(x, y);
+			o->GetSprite()->PlayAnim("obstacle" + to_string(random))->ResetAnimFrame();
+			spawnCount++;
+		}
+	}
+}
+
+Engine::Sprite* Engine::VelociRun::CreateBgSprite(string name) {
+	Texture* bgTex = new Texture(name);
+
+	return(new Sprite(bgTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad()))->SetSize(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight)->SetPosition(0, 0);
+}
+
+#include "VelociRun.h"
+
+Engine::VelociRun::VelociRun() {
+	tempPlx = NULL;
+}
+
+Engine::VelociRun::~VelociRun() {
+	delete bgTex;
+	delete veloTex;
+
+	delete bgSprt;
+	delete veloSprt;
+	delete shadow;
+
+	delete tempPlx;
+
+	delete score;
+	delete hiScore;
+	delete gameOver;
+	delete pause;
+	delete hint;
+
+	delete bgm;
+}
+
+void Engine::VelociRun::Init() {
+	//Seed for rand
+	srand(static_cast<unsigned>(time(0)));
+
+	//Global parameter initial value
+	globalXVel = 0.5;
+	maxElapsedTime = 1000;
+	numObjectsInPool = 4;
+	numObjectPerSpawn = 1;
+	currentHighScore = ReadHighScore();
+
+	//audio
+	bgm = (new Music("2021-08-16_-_8_Bit_Adventure_-_www.FesliyanStudios.com.ogg"))->SetVolume(30)->Play(true);
+
+	jumpsfx = (new Sound("jump.wav"))->SetVolume(50);
+
+	//bg
+	bgTex = new Texture("Desert_Sky.png");
+
+	bgSprt = new Sprite(bgTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+	bgSprt->SetSize((float)game->GetSettings()->screenWidth, (float)game->GetSettings()->screenHeight);
+
+	//Dark overlay
+	darkOverlay = new Texture("Dark_Overlay.png");
+
+	overlay = new Sprite(darkOverlay, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+	overlay->SetSize((float)game->GetSettings()->screenWidth, (float)game->GetSettings()->screenHeight);
+
+	//Parallax background
+	
+	//Create Backgrounds
+	//Layer 1
+	tempPlx = new Parallax(CreateBgSprite("Desert_Dunes.png"));
+	tempPlx->SetAnchor();
+	dunes.push_back(tempPlx);
+
+	tempPlx = new Parallax(CreateBgSprite("Desert_Dunes.png"));
+	tempPlx->SetFollow();
+	tempPlx->SetPosition(game->GetSettings()->screenWidth, 0);
+	dunes.push_back(tempPlx);
+
+	dunes[0]->SetLeftParallax(dunes[1]);
+	dunes[1]->SetLeftParallax(dunes[0]);
+
+	//Layer 2
+	tempPlx = new Parallax(CreateBgSprite("Desert_Cacti_Dunes.png"));
+	tempPlx->SetAnchor();
+	cactiDunes.push_back(tempPlx);
+
+	tempPlx = new Parallax(CreateBgSprite("Desert_Cacti_Dunes.png"));
+	tempPlx->SetFollow();
+	tempPlx->SetPosition(game->GetSettings()->screenWidth, 0);
+	cactiDunes.push_back(tempPlx);
+
+	cactiDunes[0]->SetLeftParallax(cactiDunes[1]);
+	cactiDunes[1]->SetLeftParallax(cactiDunes[0]);
+
+	//Layer 3
+	tempPlx = new Parallax(CreateBgSprite("Desert_Ground.png"));
+	tempPlx->SetAnchor();
+	ground.push_back(tempPlx);
+
+	tempPlx = new Parallax(CreateBgSprite("Desert_Ground.png"));
+	tempPlx->SetFollow();
+	tempPlx->SetPosition(game->GetSettings()->screenWidth, 0);
+	ground.push_back(tempPlx);
+
+	ground[0]->SetLeftParallax(ground[1]);
+	ground[1]->SetLeftParallax(ground[0]);
+
+	//Obstacles
+	Texture* obsTex = new Texture("Desert_Obstacles.png");
+	Texture* shadowTex = new Texture("Shadow.png");
+
+	for (int i = 0; i < numObjectsInPool; i++) {
+		Obstacles* o = new Obstacles(CreateObsSprite(obsTex), CreateShadowSprite(shadowTex));
+		o->GetSprite()->SetBoundingBoxSize(o->GetWidth() - (12 * o->GetSprite()->GetScale()), o->GetHeight() - (3 * o->GetSprite()->GetScale()));
+		obstacles.push_back(o);
+	}
+
+
+	//Velociraptor placeholder + shadow
+	veloTex = new Texture("DinoSprites - vita.png");
+	veloSprt = new Sprite(veloTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+	
+	shadow = new Sprite(shadowTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+
+	//Velociraptor Anim & Bounding Box & Shadow
+	veloSprt->SetNumXFrames(24)->SetNumYFrames(1)->AddAnimation("idle-run", 4, 9)->AddAnimation("duck", 17, 23)->SetScale(5)->SetAnimationDuration(60)->SetPosition(300, game->GetSettings()->screenHeight / 11);
+
+	shadow->SetScale(4)->SetPosition(300 + 2 * veloSprt->GetScale(), game->GetSettings()->screenHeight / 11 - veloSprt->GetScale());
+
+	veloSprt->SetBoundingBoxSize(veloSprt->GetScaleWidth() - (10 * veloSprt->GetScale()), veloSprt->GetScaleHeight() - (8 * veloSprt->GetScale()));
+
+	//Texts placeholder
+	score = new Text("lucon.ttf", 24, game->GetDefaultTextShader());
+	score->SetScale(1.0f)->SetColor(0, 0, 0)->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()));
+
+	hiScore = new Text("lucon.ttf", 24, game->GetDefaultTextShader());
+	hiScore->SetScale(1.0f)->SetColor(0, 0, 0)->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())));
+
+	hint = new Text("lucon.ttf", 24, game->GetDefaultTextShader());
+	hint->SetScale(1.0f)->SetColor(0, 0, 0)->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())));
+
+	gameOver = new Text("8-bit Arcade In.ttf", 100, game->GetDefaultTextShader());
+	gameOver->SetScale(1.0f)->SetColor(220, 0, 20)->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3)->SetText("Game Over")->CenterTextX();
+
+	pause = new Text("8-bit Arcade In.ttf", 100, game->GetDefaultTextShader());
+	pause->SetScale(1.0f)->SetColor(0, 0, 0)->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3)->SetText("Paused")->CenterTextX();
+
+	//Input Mapping
+	game->GetInputManager()->AddInputMapping("Jump", SDLK_UP)->AddInputMapping("Jump", SDLK_SPACE)->AddInputMapping("Main-menu", SDLK_ESCAPE)->AddInputMapping("Pause", SDLK_TAB)->AddInputMapping("Duck", SDLK_DOWN)->AddInputMapping("Reset", SDLK_r);
+
+	//Button input mapping
+	game->GetInputManager()->AddInputMapping("prev", SDLK_LEFT)->AddInputMapping("next", SDLK_RIGHT)->AddInputMapping("press", SDLK_RETURN);
+
+	//Buttons
+	//Button texture
+	Texture* buttonTex = new Texture("Circular_Buttons.png");
+
+	//Resume button
+	Sprite* resumeSprt = new Sprite(buttonTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+
+	resumeSprt->SetNumXFrames(4)->SetNumYFrames(4)->AddAnimation("normal", 0, 0)->AddAnimation("hover", 0, 3, true)->AddAnimation("press", 3, 3)->SetScale(5)->SetAnimationDuration(100);
+
+	Button* resumeButton = new Button(resumeSprt, "resume");
+	resumeButton->SetPosition((game->GetSettings()->screenWidth / 2) - (1.5 * resumeSprt->GetScaleWidth()),
+		(game->GetSettings()->screenHeight / 2) - (resumeSprt->GetScaleHeight()));
+	buttons.push_back(resumeButton);
+
+	//Restart button
+	Sprite* restartSprt = new Sprite(buttonTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+
+	restartSprt->SetNumXFrames(4)->SetNumYFrames(4)->AddAnimation("normal", 4, 4)->AddAnimation("hover", 4, 7, true)->AddAnimation("press", 7, 7)->SetScale(5)->SetAnimationDuration(100);
+
+	Button* restartButton = new Button(restartSprt, "restart");
+	restartButton->SetPosition((game->GetSettings()->screenWidth / 2) - (1.5 * restartSprt->GetScaleWidth()),
+		(game->GetSettings()->screenHeight / 2) - (restartSprt->GetScaleHeight()));
+	buttons.push_back(restartButton);
+
+	//Exit button
+	Sprite* exitSprt = new Sprite(buttonTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+
+	exitSprt->SetNumXFrames(4)->SetNumYFrames(4)->AddAnimation("normal", 12, 12)->AddAnimation("hover", 12, 15, true)->AddAnimation("press", 15, 15)->SetScale(5)->SetAnimationDuration(100);
+
+	Button* exitButton = new Button(exitSprt, "exit");
+	exitButton->SetPosition((game->GetSettings()->screenWidth / 2) + (0.5 * exitSprt->GetScaleWidth()),
+		(game->GetSettings()->screenHeight / 2) - (exitSprt->GetScaleHeight()));
+	buttons.push_back(exitButton);
+}
+
+void Engine::VelociRun::Update() {
+	//Game States
+	if (!isGameOver && !isPaused) {
+		//Spawn obstacles
+		if (elapsedTime >= maxElapsedTime) {
+			SpawnObstacles();
+			elapsedTime = 0;
+		}
+
+		elapsedTime += game->GetGameTime();
+
+		//Scoring & Global Velocity
+		if (globalCount % 20 == 0 && globalCount != 0) {
+			gameScore += 1;
+		}
+
+		if (globalCount % 40 == 0 && globalCount != 0 && globalXVel <= 1) {
+			globalXVel += 0.005;
+			globalCount = 0;
+		}
+
+		globalCount += 1;
+
+		//Update all obstacles velocity
+		for (Obstacles* o : obstacles) {
+			o->SetVelocity(globalXVel);
+		}
+
+		//Update all bg velocity
+		for (Parallax* o : dunes) {
+			o->SetVelocity(globalXVel * 1 / 10);
+		}
+		for (Parallax* o : cactiDunes) {
+			o->SetVelocity(globalXVel * 2 / 5);
+		}
+		for (Parallax* o : ground) {
+			o->SetVelocity(globalXVel);
+		}
+
+		//Detect collision
+		for (Obstacles* o : obstacles) {
+			if (!o->IsNoUse()) {
+				if (o->GetSprite()->GetBoundingBox()->CollideWith(veloSprt->GetBoundingBox())) {
+					isGameOver = true;
+					buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+					currButtonIndex = 1;
+					buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+				}
+			}
+		}
+
+		//Display texts
+		score->SetText("Score : " + to_string(gameScore));
+		hiScore->SetText("High Score : " + to_string(currentHighScore));
+		hint->SetText("Up & Down to Jump and Duck");
+
+		//Velociraptor temp pos saver and def anim
+		vec2 oldVeloPos = veloSprt->GetPosition();
+		vx = oldVeloPos.x, vy = oldVeloPos.y;
+
+		veloSprt->PlayAnim("idle-run");
+
+		//Input detections
+		//Main menu
+		if (game->GetInputManager()->IsKeyPressed("Main-menu")) {
+			//Reset global parameters
+			elapsedTime = 0;
+			yVelocity = 0;
+			globalXVel = 0.5;
+			globalCount = 0;
+			gameScore = 0;
+			jump = false;
+			duck = false;
+
+			//Reset velociraptor's pos
+			vx = 300, vy = game->GetSettings()->screenHeight / 11;
+			veloSprt->SetPosition(vx, vy);
+
+			//Reset all obstacles
+			for (Obstacles* o : obstacles) {
+				o->SetNoUse();
+				o->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+				o->SetVelocity(globalXVel);
+			}
+			
+			//Change screen
+			ScreenManager::GetInstance(game)->SetCurrentScreen("mainmenu");
+
+			return;
+		}
+
+		//Pause
+		if (game->GetInputManager()->IsKeyPressed("Pause")) {
+			//Still haven't added a pause screen yet
+			//ScreenManager::GetInstance(game)->SetCurrentScreen("mainmenu");
+
+			//Change game state and button state
+			isPaused = true;
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			currButtonIndex = 0;
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+			return;
+		}
+
+		//Jump
+		if (game->GetInputManager()->IsKeyPressed("Jump") && !jump && !duck) {
+			//Clamping
+			float delta = game->GetGameTime();
+			float maxDelta = 1000.0f / 30.0f;
+
+			if (delta >= maxDelta) {
+				delta = maxDelta;
+			}
+			//Set gravity and yVelocity
+			float ratio = (delta / 16.7f);
+			gravity = 0.05f * ratio;
+			yVelocity = 1.0f;
+			jump = true;
+			jumpsfx->Play(false);
+		}
+		//Jump physics
+		if (vy > game->GetSettings()->screenHeight / 11) {
+			yVelocity -= gravity;
+		}
+		else if (vy < game->GetSettings()->screenHeight / 11) {
+			jump = false;
+			yVelocity = 0;
+			vy = game->GetSettings()->screenHeight / 11;
+		}
+
+		if (game->GetInputManager()->IsKeyReleased("Jump") && jump) {
+			if (yVelocity > 0.8) {
+				yVelocity = 0.8;
+			}
+		}
+
+		vy += yVelocity * game->GetGameTime();
+		veloSprt->SetPosition(vx, vy);
+
+		//Duck
+		if (game->GetInputManager()->IsKeyPressed("Duck") && !jump) {
+			//Play duck anim
+			veloSprt->PlayAnim("duck");
+			//Set bounding box size for ducking
+			veloSprt->SetBoundingBoxSize(veloSprt->GetScaleWidth() - (10 * veloSprt->GetScale()), veloSprt->GetScaleHeight() - (12 * veloSprt->GetScale()));
+			duck = true;
+		}
+
+		if (game->GetInputManager()->IsKeyReleased("Duck") && duck) {
+			//Reset BBox to default
+			veloSprt->SetBoundingBoxSize(veloSprt->GetScaleWidth() - (10 * veloSprt->GetScale()), veloSprt->GetScaleHeight() - (8 * veloSprt->GetScale()));
+			duck = false;
+		}
+
+		//Update
+		veloSprt->Update(game->GetGameTime());
+
+		for (Obstacles* o : obstacles) {
+			o->Update(game->GetGameTime());
+		}
+
+		//Update all bg
+		for (Parallax* o : dunes) {
+			o->Update(game->GetGameTime());
+		}
+		for (Parallax* o : cactiDunes) {
+			o->Update(game->GetGameTime());
+		}
+		for (Parallax* o : ground) {
+			o->Update(game->GetGameTime());
+		}
+
+	}
+	else if (isPaused) {
+		//Input detections
+		//Previous
+		if (game->GetInputManager()->IsKeyPressed("prev")) {
+			// Set previous button to normal state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			// Prev Button
+			currButtonIndex = currButtonIndex > 0 ? currButtonIndex - 2 : currButtonIndex;
+			// Set current button to hover state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+		}
+
+		//Next
+		if (game->GetInputManager()->IsKeyPressed("next")) {
+			// Set previous button to normal state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			// Next Button
+			currButtonIndex = (currButtonIndex < (int)buttons.size() - 1) ? currButtonIndex + 2 : currButtonIndex;
+			// Set current button to hover state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+		}
+
+		//Press
+		if (game->GetInputManager()->IsKeyReleased("press")) {
+			// Set current button to press state
+			Button* b = buttons[currButtonIndex];
+			b->SetButtonState(Engine::ButtonState::PRESS);
+			// If start button then go to InGame, exit button then exit
+			if ("resume" == b->GetButtonName()) {
+				//Reset Text pos
+				score->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()))->SetColor(0, 0, 0);
+
+				hiScore->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())))->SetColor(0, 0, 0);
+
+				hint->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())))->SetColor(0, 0, 0);
+
+				//Change state
+				isPaused = false;
+
+				return;
+			}
+			else if ("exit" == b->GetButtonName()) {
+				//Reset global parameters
+				elapsedTime = 0;
+				globalCount = 0;
+				gameScore = 0;
+				jump = false;
+				duck = false;
+				isPaused = false;
+
+				//Reset velociraptor's pos
+				vx = 300, vy = game->GetSettings()->screenHeight / 11;
+				veloSprt->SetPosition(vx, vy);
+
+				//Reset all obstacles
+				for (Obstacles* o : obstacles) {
+					o->SetNoUse();
+					o->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+					o->SetVelocity(globalXVel);
+				}
+
+				//Change screen
+				ScreenManager::GetInstance(game)->SetCurrentScreen("mainmenu");
+
+				//Reset Text pos
+				score->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()))->SetColor(0, 0, 0);
+
+				hiScore->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())))->SetColor(0, 0, 0);
+
+				hint->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())))->SetColor(0, 0, 0);
+
+				return;
+			}
+		}
+
+		//Update all buttons
+		for (Button* b : buttons) {
+			b->Update(game->GetGameTime());
+		}
+
+		//Display texts
+		score->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3 - score->GetFontSize() * score->GetScale() * 1.5)->SetText("Score : " + to_string(gameScore))->SetColor(0, 0, 0)->CenterTextX();
+
+		hiScore->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3 - hiScore->GetFontSize() * hiScore->GetScale() * 2.5)->SetText("High Score : " + to_string(currentHighScore))->SetColor(0, 0, 0)->CenterTextX();
+
+		hint->SetText("");
+	}
+	else if (isGameOver) {
+		//Reset parameter
+		yVelocity = 0;
+		globalXVel = 0.5;
+
+		//High score check
+		if (gameScore > currentHighScore) {
+			WriteHighScore(gameScore);
+			currentHighScore = ReadHighScore();
+		}
+
+		//Input detections
+		//Previous
+		if (game->GetInputManager()->IsKeyPressed("prev")) {
+			// Set previous button to normal state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			// Prev Button
+			currButtonIndex = currButtonIndex > 1 ? currButtonIndex - 1 : currButtonIndex;
+			// Set current button to hover state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+		}
+
+		//Next
+		if (game->GetInputManager()->IsKeyPressed("next")) {
+			// Set previous button to normal state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			// Next Button
+			currButtonIndex = (currButtonIndex < (int)buttons.size() - 1) ? currButtonIndex + 1 : currButtonIndex;
+			// Set current button to hover state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+		}
+
+		//Press
+		if (game->GetInputManager()->IsKeyReleased("press")) {
+			// Set current button to press state
+			Button* b = buttons[currButtonIndex];
+			b->SetButtonState(Engine::ButtonState::PRESS);
+			// If start button then go to InGame, exit button then exit
+			if ("restart" == b->GetButtonName()) {
+				//Reset global parameters
+				elapsedTime = 0;
+				globalCount = 0;
+				gameScore = 0;
+				jump = false;
+				duck = false;
+				isGameOver = false;
+
+				//Reset velociraptor's pos
+				vx = 300, vy = game->GetSettings()->screenHeight / 11;
+				veloSprt->SetPosition(vx, vy);
+
+				//Reset all obstacles
+				for (Obstacles* o : obstacles) {
+					o->SetNoUse();
+					o->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+					o->SetVelocity(globalXVel);
+				}
+
+				//Reset Text pos
+				score->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()))->SetColor(0, 0, 0);
+
+				hiScore->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())))->SetColor(0, 0, 0);
+
+				hint->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())))->SetColor(0, 0, 0);
+
+				return;
+			}
+			else if ("exit" == b->GetButtonName()) {
+				//Reset global parameters
+				elapsedTime = 0;
+				globalCount = 0;
+				gameScore = 0;
+				jump = false;
+				duck = false;
+				isGameOver = false;
+
+				//Reset velociraptor's pos
+				vx = 300, vy = game->GetSettings()->screenHeight / 11;
+				veloSprt->SetPosition(vx, vy);
+
+				//Reset all obstacles
+				for (Obstacles* o : obstacles) {
+					o->SetNoUse();
+					o->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+					o->SetVelocity(globalXVel);
+				}
+
+				//Change screen
+				ScreenManager::GetInstance(game)->SetCurrentScreen("mainmenu");
+
+				//Reset Text pos
+				score->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()))->SetColor(0, 0, 0);
+
+				hiScore->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())))->SetColor(0, 0, 0);
+
+				hint->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())))->SetColor(0, 0, 0);
+
+				return;
+			}
+		}
+		
+		//Update all buttons
+		for (Button* b : buttons) {
+			b->Update(game->GetGameTime());
+		}
+
+		//Display texts
+		score->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3 - score->GetFontSize() * score->GetScale() * 1.5)->SetText("Score : " + to_string(gameScore))->SetColor(0, 0, 0)->CenterTextX();
+
+		hiScore->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3 - hiScore->GetFontSize() * hiScore->GetScale() * 2.5)->SetText("High Score : " + to_string(currentHighScore))->SetColor(0, 0, 0)->CenterTextX();
+
+		hint->SetText("");
+	}
+}
+
+void Engine::VelociRun::Draw() {
+	//Sky
+	bgSprt->Draw();
+
+	//All bg
+	for (Parallax* o : dunes) {
+		o->Draw();
+	}
+	for (Parallax* o : cactiDunes) {
+		o->Draw();
+	}
+	for (Parallax* o : ground) {
+		o->Draw();
+	}
+
+	//Velociraptor
+	shadow->Draw();
+	veloSprt->Draw();
+
+	//All obstacles
+	for (Obstacles* o : obstacles) {
+		o->Draw();
+	}
+	if (isPaused) {
+		overlay->Draw();
+
+		buttons[0]->Draw();
+		buttons[2]->Draw();
+
+		pause->Draw();
+	}
+
+	if (isGameOver) {
+		overlay->Draw();
+		
+		buttons[1]->Draw();
+		buttons[2]->Draw();
+
+		gameOver->Draw();
+	}
+
+	//Texts
+	score->Draw();
+	hiScore->Draw();
+	hint->Draw();
+}
+
+Engine::Sprite* Engine::VelociRun::CreateObsSprite(Texture* texture) {
+	return (new Sprite(texture, game->GetDefaultSpriteShader(), game->GetDefaultQuad()))->SetNumXFrames(3)->SetNumYFrames(2)->AddAnimation("obstacle1", 0, 0)->AddAnimation("obstacle2", 1, 1)->AddAnimation("obstacle3", 2, 2)->AddAnimation("obstacle4", 3, 4)->SetScale(4)->SetAnimationDuration(500);
+}
+
+Engine::Sprite* Engine::VelociRun::CreateShadowSprite(Texture* texture) {
+	return (new Sprite(texture, game->GetDefaultSpriteShader(), game->GetDefaultQuad()))->SetScale(4)->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+}
+
+void Engine::VelociRun::SpawnObstacles() {
+	int spawnCount = 0;
+	for (Obstacles* o : obstacles) {
+		if (spawnCount == numObjectPerSpawn) {
+			break;
+		}
+		if (o->IsNoUse()) {
+			unsigned int random = 1 + (rand() % 4);
+			//x and y position
+			float x = (float)(game->GetSettings()->screenWidth);
+			float y = game->GetSettings()->screenHeight / 11;
+			//y position of airborne obstacles
+			if (random > 3) {
+				y = game->GetSettings()->screenHeight / 11 + 70;
+			}
+			//Set position and play random animation
+			o->SetUse()->SetPosition(x, y);
+			o->GetSprite()->PlayAnim("obstacle" + to_string(random))->ResetAnimFrame();
+			spawnCount++;
+		}
+	}
+}
+
+Engine::Sprite* Engine::VelociRun::CreateBgSprite(string name) {
+	Texture* bgTex = new Texture(name);
+
+	return(new Sprite(bgTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad()))->SetSize(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight)->SetPosition(0, 0);
+}
+
+#include "VelociRun.h"
+
+Engine::VelociRun::VelociRun() {
+	tempPlx = NULL;
+}
+
+Engine::VelociRun::~VelociRun() {
+	delete bgTex;
+	delete veloTex;
+
+	delete bgSprt;
+	delete veloSprt;
+	delete shadow;
+
+	delete tempPlx;
+
+	delete score;
+	delete hiScore;
+	delete gameOver;
+	delete pause;
+	delete hint;
+
+	delete bgm;
+}
+
+void Engine::VelociRun::Init() {
+	//Seed for rand
+	srand(static_cast<unsigned>(time(0)));
+
+	//Global parameter initial value
+	globalXVel = 0.5;
+	maxElapsedTime = 1000;
+	numObjectsInPool = 4;
+	numObjectPerSpawn = 1;
+	currentHighScore = ReadHighScore();
+
+	//audio
+	bgm = (new Music("2021-08-16_-_8_Bit_Adventure_-_www.FesliyanStudios.com.ogg"))->SetVolume(30)->Play(true);
+
+	jumpsfx = (new Sound("jump.wav"))->SetVolume(50);
+
+	//bg
+	bgTex = new Texture("Desert_Sky.png");
+
+	bgSprt = new Sprite(bgTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+	bgSprt->SetSize((float)game->GetSettings()->screenWidth, (float)game->GetSettings()->screenHeight);
+
+	//Dark overlay
+	darkOverlay = new Texture("Dark_Overlay.png");
+
+	overlay = new Sprite(darkOverlay, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+	overlay->SetSize((float)game->GetSettings()->screenWidth, (float)game->GetSettings()->screenHeight);
+
+	//Parallax background
+	
+	//Create Backgrounds
+	//Layer 1
+	tempPlx = new Parallax(CreateBgSprite("Desert_Dunes.png"));
+	tempPlx->SetAnchor();
+	dunes.push_back(tempPlx);
+
+	tempPlx = new Parallax(CreateBgSprite("Desert_Dunes.png"));
+	tempPlx->SetFollow();
+	tempPlx->SetPosition(game->GetSettings()->screenWidth, 0);
+	dunes.push_back(tempPlx);
+
+	dunes[0]->SetLeftParallax(dunes[1]);
+	dunes[1]->SetLeftParallax(dunes[0]);
+
+	//Layer 2
+	tempPlx = new Parallax(CreateBgSprite("Desert_Cacti_Dunes.png"));
+	tempPlx->SetAnchor();
+	cactiDunes.push_back(tempPlx);
+
+	tempPlx = new Parallax(CreateBgSprite("Desert_Cacti_Dunes.png"));
+	tempPlx->SetFollow();
+	tempPlx->SetPosition(game->GetSettings()->screenWidth, 0);
+	cactiDunes.push_back(tempPlx);
+
+	cactiDunes[0]->SetLeftParallax(cactiDunes[1]);
+	cactiDunes[1]->SetLeftParallax(cactiDunes[0]);
+
+	//Layer 3
+	tempPlx = new Parallax(CreateBgSprite("Desert_Ground.png"));
+	tempPlx->SetAnchor();
+	ground.push_back(tempPlx);
+
+	tempPlx = new Parallax(CreateBgSprite("Desert_Ground.png"));
+	tempPlx->SetFollow();
+	tempPlx->SetPosition(game->GetSettings()->screenWidth, 0);
+	ground.push_back(tempPlx);
+
+	ground[0]->SetLeftParallax(ground[1]);
+	ground[1]->SetLeftParallax(ground[0]);
+
+	//Obstacles
+	Texture* obsTex = new Texture("Desert_Obstacles.png");
+	Texture* shadowTex = new Texture("Shadow.png");
+
+	for (int i = 0; i < numObjectsInPool; i++) {
+		Obstacles* o = new Obstacles(CreateObsSprite(obsTex), CreateShadowSprite(shadowTex));
+		o->GetSprite()->SetBoundingBoxSize(o->GetWidth() - (12 * o->GetSprite()->GetScale()), o->GetHeight() - (3 * o->GetSprite()->GetScale()));
+		obstacles.push_back(o);
+	}
+
+
+	//Velociraptor placeholder + shadow
+	veloTex = new Texture("DinoSprites - vita.png");
+	veloSprt = new Sprite(veloTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+	
+	shadow = new Sprite(shadowTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+
+	//Velociraptor Anim & Bounding Box & Shadow
+	veloSprt->SetNumXFrames(24)->SetNumYFrames(1)->AddAnimation("idle-run", 4, 9)->AddAnimation("duck", 17, 23)->SetScale(5)->SetAnimationDuration(60)->SetPosition(300, game->GetSettings()->screenHeight / 11);
+
+	shadow->SetScale(4)->SetPosition(300 + 2 * veloSprt->GetScale(), game->GetSettings()->screenHeight / 11 - veloSprt->GetScale());
+
+	veloSprt->SetBoundingBoxSize(veloSprt->GetScaleWidth() - (10 * veloSprt->GetScale()), veloSprt->GetScaleHeight() - (8 * veloSprt->GetScale()));
+
+	//Texts placeholder
+	score = new Text("lucon.ttf", 24, game->GetDefaultTextShader());
+	score->SetScale(1.0f)->SetColor(0, 0, 0)->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()));
+
+	hiScore = new Text("lucon.ttf", 24, game->GetDefaultTextShader());
+	hiScore->SetScale(1.0f)->SetColor(0, 0, 0)->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())));
+
+	hint = new Text("lucon.ttf", 24, game->GetDefaultTextShader());
+	hint->SetScale(1.0f)->SetColor(0, 0, 0)->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())));
+
+	gameOver = new Text("8-bit Arcade In.ttf", 100, game->GetDefaultTextShader());
+	gameOver->SetScale(1.0f)->SetColor(220, 0, 20)->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3)->SetText("Game Over")->CenterTextX();
+
+	pause = new Text("8-bit Arcade In.ttf", 100, game->GetDefaultTextShader());
+	pause->SetScale(1.0f)->SetColor(0, 0, 0)->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3)->SetText("Paused")->CenterTextX();
+
+	//Input Mapping
+	game->GetInputManager()->AddInputMapping("Jump", SDLK_UP)->AddInputMapping("Jump", SDLK_SPACE)->AddInputMapping("Main-menu", SDLK_ESCAPE)->AddInputMapping("Pause", SDLK_TAB)->AddInputMapping("Duck", SDLK_DOWN)->AddInputMapping("Reset", SDLK_r);
+
+	//Button input mapping
+	game->GetInputManager()->AddInputMapping("prev", SDLK_LEFT)->AddInputMapping("next", SDLK_RIGHT)->AddInputMapping("press", SDLK_RETURN);
+
+	//Buttons
+	//Button texture
+	Texture* buttonTex = new Texture("Circular_Buttons.png");
+
+	//Resume button
+	Sprite* resumeSprt = new Sprite(buttonTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+
+	resumeSprt->SetNumXFrames(4)->SetNumYFrames(4)->AddAnimation("normal", 0, 0)->AddAnimation("hover", 0, 3, true)->AddAnimation("press", 3, 3)->SetScale(5)->SetAnimationDuration(100);
+
+	Button* resumeButton = new Button(resumeSprt, "resume");
+	resumeButton->SetPosition((game->GetSettings()->screenWidth / 2) - (1.5 * resumeSprt->GetScaleWidth()),
+		(game->GetSettings()->screenHeight / 2) - (resumeSprt->GetScaleHeight()));
+	buttons.push_back(resumeButton);
+
+	//Restart button
+	Sprite* restartSprt = new Sprite(buttonTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+
+	restartSprt->SetNumXFrames(4)->SetNumYFrames(4)->AddAnimation("normal", 4, 4)->AddAnimation("hover", 4, 7, true)->AddAnimation("press", 7, 7)->SetScale(5)->SetAnimationDuration(100);
+
+	Button* restartButton = new Button(restartSprt, "restart");
+	restartButton->SetPosition((game->GetSettings()->screenWidth / 2) - (1.5 * restartSprt->GetScaleWidth()),
+		(game->GetSettings()->screenHeight / 2) - (restartSprt->GetScaleHeight()));
+	buttons.push_back(restartButton);
+
+	//Exit button
+	Sprite* exitSprt = new Sprite(buttonTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+
+	exitSprt->SetNumXFrames(4)->SetNumYFrames(4)->AddAnimation("normal", 12, 12)->AddAnimation("hover", 12, 15, true)->AddAnimation("press", 15, 15)->SetScale(5)->SetAnimationDuration(100);
+
+	Button* exitButton = new Button(exitSprt, "exit");
+	exitButton->SetPosition((game->GetSettings()->screenWidth / 2) + (0.5 * exitSprt->GetScaleWidth()),
+		(game->GetSettings()->screenHeight / 2) - (exitSprt->GetScaleHeight()));
+	buttons.push_back(exitButton);
+}
+
+void Engine::VelociRun::Update() {
+	//Game States
+	if (!isGameOver && !isPaused) {
+		//Spawn obstacles
+		if (elapsedTime >= maxElapsedTime) {
+			SpawnObstacles();
+			elapsedTime = 0;
+		}
+
+		elapsedTime += game->GetGameTime();
+
+		//Scoring & Global Velocity
+		if (globalCount % 20 == 0 && globalCount != 0) {
+			gameScore += 1;
+		}
+
+		if (globalCount % 40 == 0 && globalCount != 0 && globalXVel <= 1) {
+			globalXVel += 0.005;
+			globalCount = 0;
+		}
+
+		globalCount += 1;
+
+		//Update all obstacles velocity
+		for (Obstacles* o : obstacles) {
+			o->SetVelocity(globalXVel);
+		}
+
+		//Update all bg velocity
+		for (Parallax* o : dunes) {
+			o->SetVelocity(globalXVel * 1 / 10);
+		}
+		for (Parallax* o : cactiDunes) {
+			o->SetVelocity(globalXVel * 2 / 5);
+		}
+		for (Parallax* o : ground) {
+			o->SetVelocity(globalXVel);
+		}
+
+		//Detect collision
+		for (Obstacles* o : obstacles) {
+			if (!o->IsNoUse()) {
+				if (o->GetSprite()->GetBoundingBox()->CollideWith(veloSprt->GetBoundingBox())) {
+					isGameOver = true;
+					buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+					currButtonIndex = 1;
+					buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+				}
+			}
+		}
+
+		//Display texts
+		score->SetText("Score : " + to_string(gameScore));
+		hiScore->SetText("High Score : " + to_string(currentHighScore));
+		hint->SetText("Up & Down to Jump and Duck");
+
+		//Velociraptor temp pos saver and def anim
+		vec2 oldVeloPos = veloSprt->GetPosition();
+		vx = oldVeloPos.x, vy = oldVeloPos.y;
+
+		veloSprt->PlayAnim("idle-run");
+
+		//Input detections
+		//Main menu
+		if (game->GetInputManager()->IsKeyPressed("Main-menu")) {
+			//Reset global parameters
+			elapsedTime = 0;
+			yVelocity = 0;
+			globalXVel = 0.5;
+			globalCount = 0;
+			gameScore = 0;
+			jump = false;
+			duck = false;
+
+			//Reset velociraptor's pos
+			vx = 300, vy = game->GetSettings()->screenHeight / 11;
+			veloSprt->SetPosition(vx, vy);
+
+			//Reset all obstacles
+			for (Obstacles* o : obstacles) {
+				o->SetNoUse();
+				o->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+				o->SetVelocity(globalXVel);
+			}
+			
+			//Change screen
+			ScreenManager::GetInstance(game)->SetCurrentScreen("mainmenu");
+
+			return;
+		}
+
+		//Pause
+		if (game->GetInputManager()->IsKeyPressed("Pause")) {
+			//Still haven't added a pause screen yet
+			//ScreenManager::GetInstance(game)->SetCurrentScreen("mainmenu");
+
+			//Change game state and button state
+			isPaused = true;
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			currButtonIndex = 0;
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+			return;
+		}
+
+		//Jump
+		if (game->GetInputManager()->IsKeyPressed("Jump") && !jump && !duck) {
+			//Clamping
+			float delta = game->GetGameTime();
+			float maxDelta = 1000.0f / 30.0f;
+
+			if (delta >= maxDelta) {
+				delta = maxDelta;
+			}
+			//Set gravity and yVelocity
+			float ratio = (delta / 16.7f);
+			gravity = 0.05f * ratio;
+			yVelocity = 1.0f;
+			jump = true;
+			jumpsfx->Play(false);
+		}
+		//Jump physics
+		if (vy > game->GetSettings()->screenHeight / 11) {
+			yVelocity -= gravity;
+		}
+		else if (vy < game->GetSettings()->screenHeight / 11) {
+			jump = false;
+			yVelocity = 0;
+			vy = game->GetSettings()->screenHeight / 11;
+		}
+
+		if (game->GetInputManager()->IsKeyReleased("Jump") && jump) {
+			if (yVelocity > 0.8) {
+				yVelocity = 0.8;
+			}
+		}
+
+		vy += yVelocity * game->GetGameTime();
+		veloSprt->SetPosition(vx, vy);
+
+		//Duck
+		if (game->GetInputManager()->IsKeyPressed("Duck") && !jump) {
+			//Play duck anim
+			veloSprt->PlayAnim("duck");
+			//Set bounding box size for ducking
+			veloSprt->SetBoundingBoxSize(veloSprt->GetScaleWidth() - (10 * veloSprt->GetScale()), veloSprt->GetScaleHeight() - (12 * veloSprt->GetScale()));
+			duck = true;
+		}
+
+		if (game->GetInputManager()->IsKeyReleased("Duck") && duck) {
+			//Reset BBox to default
+			veloSprt->SetBoundingBoxSize(veloSprt->GetScaleWidth() - (10 * veloSprt->GetScale()), veloSprt->GetScaleHeight() - (8 * veloSprt->GetScale()));
+			duck = false;
+		}
+
+		//Update
+		veloSprt->Update(game->GetGameTime());
+
+		for (Obstacles* o : obstacles) {
+			o->Update(game->GetGameTime());
+		}
+
+		//Update all bg
+		for (Parallax* o : dunes) {
+			o->Update(game->GetGameTime());
+		}
+		for (Parallax* o : cactiDunes) {
+			o->Update(game->GetGameTime());
+		}
+		for (Parallax* o : ground) {
+			o->Update(game->GetGameTime());
+		}
+
+	}
+	else if (isPaused) {
+		//Input detections
+		//Previous
+		if (game->GetInputManager()->IsKeyPressed("prev")) {
+			// Set previous button to normal state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			// Prev Button
+			currButtonIndex = currButtonIndex > 0 ? currButtonIndex - 2 : currButtonIndex;
+			// Set current button to hover state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+		}
+
+		//Next
+		if (game->GetInputManager()->IsKeyPressed("next")) {
+			// Set previous button to normal state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			// Next Button
+			currButtonIndex = (currButtonIndex < (int)buttons.size() - 1) ? currButtonIndex + 2 : currButtonIndex;
+			// Set current button to hover state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+		}
+
+		//Press
+		if (game->GetInputManager()->IsKeyReleased("press")) {
+			// Set current button to press state
+			Button* b = buttons[currButtonIndex];
+			b->SetButtonState(Engine::ButtonState::PRESS);
+			// If start button then go to InGame, exit button then exit
+			if ("resume" == b->GetButtonName()) {
+				//Reset Text pos
+				score->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()))->SetColor(0, 0, 0);
+
+				hiScore->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())))->SetColor(0, 0, 0);
+
+				hint->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())))->SetColor(0, 0, 0);
+
+				//Change state
+				isPaused = false;
+
+				return;
+			}
+			else if ("exit" == b->GetButtonName()) {
+				//Reset global parameters
+				elapsedTime = 0;
+				globalCount = 0;
+				gameScore = 0;
+				jump = false;
+				duck = false;
+				isPaused = false;
+
+				//Reset velociraptor's pos
+				vx = 300, vy = game->GetSettings()->screenHeight / 11;
+				veloSprt->SetPosition(vx, vy);
+
+				//Reset all obstacles
+				for (Obstacles* o : obstacles) {
+					o->SetNoUse();
+					o->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+					o->SetVelocity(globalXVel);
+				}
+
+				//Change screen
+				ScreenManager::GetInstance(game)->SetCurrentScreen("mainmenu");
+
+				//Reset Text pos
+				score->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()))->SetColor(0, 0, 0);
+
+				hiScore->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())))->SetColor(0, 0, 0);
+
+				hint->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())))->SetColor(0, 0, 0);
+
+				return;
+			}
+		}
+
+		//Update all buttons
+		for (Button* b : buttons) {
+			b->Update(game->GetGameTime());
+		}
+
+		//Display texts
+		score->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3 - score->GetFontSize() * score->GetScale() * 1.5)->SetText("Score : " + to_string(gameScore))->SetColor(0, 0, 0)->CenterTextX();
+
+		hiScore->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3 - hiScore->GetFontSize() * hiScore->GetScale() * 2.5)->SetText("High Score : " + to_string(currentHighScore))->SetColor(0, 0, 0)->CenterTextX();
+
+		hint->SetText("");
+	}
+	else if (isGameOver) {
+		//Reset parameter
+		yVelocity = 0;
+		globalXVel = 0.5;
+
+		//High score check
+		if (gameScore > currentHighScore) {
+			WriteHighScore(gameScore);
+			currentHighScore = ReadHighScore();
+		}
+
+		//Input detections
+		//Previous
+		if (game->GetInputManager()->IsKeyPressed("prev")) {
+			// Set previous button to normal state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			// Prev Button
+			currButtonIndex = currButtonIndex > 1 ? currButtonIndex - 1 : currButtonIndex;
+			// Set current button to hover state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+		}
+
+		//Next
+		if (game->GetInputManager()->IsKeyPressed("next")) {
+			// Set previous button to normal state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			// Next Button
+			currButtonIndex = (currButtonIndex < (int)buttons.size() - 1) ? currButtonIndex + 1 : currButtonIndex;
+			// Set current button to hover state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+		}
+
+		//Press
+		if (game->GetInputManager()->IsKeyReleased("press")) {
+			// Set current button to press state
+			Button* b = buttons[currButtonIndex];
+			b->SetButtonState(Engine::ButtonState::PRESS);
+			// If start button then go to InGame, exit button then exit
+			if ("restart" == b->GetButtonName()) {
+				//Reset global parameters
+				elapsedTime = 0;
+				globalCount = 0;
+				gameScore = 0;
+				jump = false;
+				duck = false;
+				isGameOver = false;
+
+				//Reset velociraptor's pos
+				vx = 300, vy = game->GetSettings()->screenHeight / 11;
+				veloSprt->SetPosition(vx, vy);
+
+				//Reset all obstacles
+				for (Obstacles* o : obstacles) {
+					o->SetNoUse();
+					o->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+					o->SetVelocity(globalXVel);
+				}
+
+				//Reset Text pos
+				score->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()))->SetColor(0, 0, 0);
+
+				hiScore->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())))->SetColor(0, 0, 0);
+
+				hint->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())))->SetColor(0, 0, 0);
+
+				return;
+			}
+			else if ("exit" == b->GetButtonName()) {
+				//Reset global parameters
+				elapsedTime = 0;
+				globalCount = 0;
+				gameScore = 0;
+				jump = false;
+				duck = false;
+				isGameOver = false;
+
+				//Reset velociraptor's pos
+				vx = 300, vy = game->GetSettings()->screenHeight / 11;
+				veloSprt->SetPosition(vx, vy);
+
+				//Reset all obstacles
+				for (Obstacles* o : obstacles) {
+					o->SetNoUse();
+					o->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+					o->SetVelocity(globalXVel);
+				}
+
+				//Change screen
+				ScreenManager::GetInstance(game)->SetCurrentScreen("mainmenu");
+
+				//Reset Text pos
+				score->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()))->SetColor(0, 0, 0);
+
+				hiScore->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())))->SetColor(0, 0, 0);
+
+				hint->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())))->SetColor(0, 0, 0);
+
+				return;
+			}
+		}
+		
+		//Update all buttons
+		for (Button* b : buttons) {
+			b->Update(game->GetGameTime());
+		}
+
+		//Display texts
+		score->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3 - score->GetFontSize() * score->GetScale() * 1.5)->SetText("Score : " + to_string(gameScore))->SetColor(0, 0, 0)->CenterTextX();
+
+		hiScore->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3 - hiScore->GetFontSize() * hiScore->GetScale() * 2.5)->SetText("High Score : " + to_string(currentHighScore))->SetColor(0, 0, 0)->CenterTextX();
+
+		hint->SetText("");
+	}
+}
+
+void Engine::VelociRun::Draw() {
+	//Sky
+	bgSprt->Draw();
+
+	//All bg
+	for (Parallax* o : dunes) {
+		o->Draw();
+	}
+	for (Parallax* o : cactiDunes) {
+		o->Draw();
+	}
+	for (Parallax* o : ground) {
+		o->Draw();
+	}
+
+	//Velociraptor
+	shadow->Draw();
+	veloSprt->Draw();
+
+	//All obstacles
+	for (Obstacles* o : obstacles) {
+		o->Draw();
+	}
+	if (isPaused) {
+		overlay->Draw();
+
+		buttons[0]->Draw();
+		buttons[2]->Draw();
+
+		pause->Draw();
+	}
+
+	if (isGameOver) {
+		overlay->Draw();
+		
+		buttons[1]->Draw();
+		buttons[2]->Draw();
+
+		gameOver->Draw();
+	}
+
+	//Texts
+	score->Draw();
+	hiScore->Draw();
+	hint->Draw();
+}
+
+Engine::Sprite* Engine::VelociRun::CreateObsSprite(Texture* texture) {
+	return (new Sprite(texture, game->GetDefaultSpriteShader(), game->GetDefaultQuad()))->SetNumXFrames(3)->SetNumYFrames(2)->AddAnimation("obstacle1", 0, 0)->AddAnimation("obstacle2", 1, 1)->AddAnimation("obstacle3", 2, 2)->AddAnimation("obstacle4", 3, 4)->SetScale(4)->SetAnimationDuration(500);
+}
+
+Engine::Sprite* Engine::VelociRun::CreateShadowSprite(Texture* texture) {
+	return (new Sprite(texture, game->GetDefaultSpriteShader(), game->GetDefaultQuad()))->SetScale(4)->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+}
+
+void Engine::VelociRun::SpawnObstacles() {
+	int spawnCount = 0;
+	for (Obstacles* o : obstacles) {
+		if (spawnCount == numObjectPerSpawn) {
+			break;
+		}
+		if (o->IsNoUse()) {
+			unsigned int random = 1 + (rand() % 4);
+			//x and y position
+			float x = (float)(game->GetSettings()->screenWidth);
+			float y = game->GetSettings()->screenHeight / 11;
+			//y position of airborne obstacles
+			if (random > 3) {
+				y = game->GetSettings()->screenHeight / 11 + 70;
+			}
+			//Set position and play random animation
+			o->SetUse()->SetPosition(x, y);
+			o->GetSprite()->PlayAnim("obstacle" + to_string(random))->ResetAnimFrame();
+			spawnCount++;
+		}
+	}
+}
+
+Engine::Sprite* Engine::VelociRun::CreateBgSprite(string name) {
+	Texture* bgTex = new Texture(name);
+
+	return(new Sprite(bgTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad()))->SetSize(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight)->SetPosition(0, 0);
+}
+
+#include "VelociRun.h"
+
+Engine::VelociRun::VelociRun() {
+	tempPlx = NULL;
+}
+
+Engine::VelociRun::~VelociRun() {
+	delete bgTex;
+	delete veloTex;
+
+	delete bgSprt;
+	delete veloSprt;
+	delete shadow;
+
+	delete tempPlx;
+
+	delete score;
+	delete hiScore;
+	delete gameOver;
+	delete pause;
+	delete hint;
+
+	delete bgm;
+}
+
+void Engine::VelociRun::Init() {
+	//Seed for rand
+	srand(static_cast<unsigned>(time(0)));
+
+	//Global parameter initial value
+	globalXVel = 0.5;
+	maxElapsedTime = 1000;
+	numObjectsInPool = 4;
+	numObjectPerSpawn = 1;
+	currentHighScore = ReadHighScore();
+
+	//audio
+	bgm = (new Music("2021-08-16_-_8_Bit_Adventure_-_www.FesliyanStudios.com.ogg"))->SetVolume(30)->Play(true);
+
+	jumpsfx = (new Sound("jump.wav"))->SetVolume(50);
+
+	//bg
+	bgTex = new Texture("Desert_Sky.png");
+
+	bgSprt = new Sprite(bgTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+	bgSprt->SetSize((float)game->GetSettings()->screenWidth, (float)game->GetSettings()->screenHeight);
+
+	//Dark overlay
+	darkOverlay = new Texture("Dark_Overlay.png");
+
+	overlay = new Sprite(darkOverlay, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+	overlay->SetSize((float)game->GetSettings()->screenWidth, (float)game->GetSettings()->screenHeight);
+
+	//Parallax background
+	
+	//Create Backgrounds
+	//Layer 1
+	tempPlx = new Parallax(CreateBgSprite("Desert_Dunes.png"));
+	tempPlx->SetAnchor();
+	dunes.push_back(tempPlx);
+
+	tempPlx = new Parallax(CreateBgSprite("Desert_Dunes.png"));
+	tempPlx->SetFollow();
+	tempPlx->SetPosition(game->GetSettings()->screenWidth, 0);
+	dunes.push_back(tempPlx);
+
+	dunes[0]->SetLeftParallax(dunes[1]);
+	dunes[1]->SetLeftParallax(dunes[0]);
+
+	//Layer 2
+	tempPlx = new Parallax(CreateBgSprite("Desert_Cacti_Dunes.png"));
+	tempPlx->SetAnchor();
+	cactiDunes.push_back(tempPlx);
+
+	tempPlx = new Parallax(CreateBgSprite("Desert_Cacti_Dunes.png"));
+	tempPlx->SetFollow();
+	tempPlx->SetPosition(game->GetSettings()->screenWidth, 0);
+	cactiDunes.push_back(tempPlx);
+
+	cactiDunes[0]->SetLeftParallax(cactiDunes[1]);
+	cactiDunes[1]->SetLeftParallax(cactiDunes[0]);
+
+	//Layer 3
+	tempPlx = new Parallax(CreateBgSprite("Desert_Ground.png"));
+	tempPlx->SetAnchor();
+	ground.push_back(tempPlx);
+
+	tempPlx = new Parallax(CreateBgSprite("Desert_Ground.png"));
+	tempPlx->SetFollow();
+	tempPlx->SetPosition(game->GetSettings()->screenWidth, 0);
+	ground.push_back(tempPlx);
+
+	ground[0]->SetLeftParallax(ground[1]);
+	ground[1]->SetLeftParallax(ground[0]);
+
+	//Obstacles
+	Texture* obsTex = new Texture("Desert_Obstacles.png");
+	Texture* shadowTex = new Texture("Shadow.png");
+
+	for (int i = 0; i < numObjectsInPool; i++) {
+		Obstacles* o = new Obstacles(CreateObsSprite(obsTex), CreateShadowSprite(shadowTex));
+		o->GetSprite()->SetBoundingBoxSize(o->GetWidth() - (12 * o->GetSprite()->GetScale()), o->GetHeight() - (3 * o->GetSprite()->GetScale()));
+		obstacles.push_back(o);
+	}
+
+
+	//Velociraptor placeholder + shadow
+	veloTex = new Texture("DinoSprites - vita.png");
+	veloSprt = new Sprite(veloTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+	
+	shadow = new Sprite(shadowTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+
+	//Velociraptor Anim & Bounding Box & Shadow
+	veloSprt->SetNumXFrames(24)->SetNumYFrames(1)->AddAnimation("idle-run", 4, 9)->AddAnimation("duck", 17, 23)->SetScale(5)->SetAnimationDuration(60)->SetPosition(300, game->GetSettings()->screenHeight / 11);
+
+	shadow->SetScale(4)->SetPosition(300 + 2 * veloSprt->GetScale(), game->GetSettings()->screenHeight / 11 - veloSprt->GetScale());
+
+	veloSprt->SetBoundingBoxSize(veloSprt->GetScaleWidth() - (10 * veloSprt->GetScale()), veloSprt->GetScaleHeight() - (8 * veloSprt->GetScale()));
+
+	//Texts placeholder
+	score = new Text("lucon.ttf", 24, game->GetDefaultTextShader());
+	score->SetScale(1.0f)->SetColor(0, 0, 0)->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()));
+
+	hiScore = new Text("lucon.ttf", 24, game->GetDefaultTextShader());
+	hiScore->SetScale(1.0f)->SetColor(0, 0, 0)->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())));
+
+	hint = new Text("lucon.ttf", 24, game->GetDefaultTextShader());
+	hint->SetScale(1.0f)->SetColor(0, 0, 0)->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())));
+
+	gameOver = new Text("8-bit Arcade In.ttf", 100, game->GetDefaultTextShader());
+	gameOver->SetScale(1.0f)->SetColor(220, 0, 20)->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3)->SetText("Game Over")->CenterTextX();
+
+	pause = new Text("8-bit Arcade In.ttf", 100, game->GetDefaultTextShader());
+	pause->SetScale(1.0f)->SetColor(0, 0, 0)->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3)->SetText("Paused")->CenterTextX();
+
+	//Input Mapping
+	game->GetInputManager()->AddInputMapping("Jump", SDLK_UP)->AddInputMapping("Jump", SDLK_SPACE)->AddInputMapping("Main-menu", SDLK_ESCAPE)->AddInputMapping("Pause", SDLK_TAB)->AddInputMapping("Duck", SDLK_DOWN)->AddInputMapping("Reset", SDLK_r);
+
+	//Button input mapping
+	game->GetInputManager()->AddInputMapping("prev", SDLK_LEFT)->AddInputMapping("next", SDLK_RIGHT)->AddInputMapping("press", SDLK_RETURN);
+
+	//Buttons
+	//Button texture
+	Texture* buttonTex = new Texture("Circular_Buttons.png");
+
+	//Resume button
+	Sprite* resumeSprt = new Sprite(buttonTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+
+	resumeSprt->SetNumXFrames(4)->SetNumYFrames(4)->AddAnimation("normal", 0, 0)->AddAnimation("hover", 0, 3, true)->AddAnimation("press", 3, 3)->SetScale(5)->SetAnimationDuration(100);
+
+	Button* resumeButton = new Button(resumeSprt, "resume");
+	resumeButton->SetPosition((game->GetSettings()->screenWidth / 2) - (1.5 * resumeSprt->GetScaleWidth()),
+		(game->GetSettings()->screenHeight / 2) - (resumeSprt->GetScaleHeight()));
+	buttons.push_back(resumeButton);
+
+	//Restart button
+	Sprite* restartSprt = new Sprite(buttonTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+
+	restartSprt->SetNumXFrames(4)->SetNumYFrames(4)->AddAnimation("normal", 4, 4)->AddAnimation("hover", 4, 7, true)->AddAnimation("press", 7, 7)->SetScale(5)->SetAnimationDuration(100);
+
+	Button* restartButton = new Button(restartSprt, "restart");
+	restartButton->SetPosition((game->GetSettings()->screenWidth / 2) - (1.5 * restartSprt->GetScaleWidth()),
+		(game->GetSettings()->screenHeight / 2) - (restartSprt->GetScaleHeight()));
+	buttons.push_back(restartButton);
+
+	//Exit button
+	Sprite* exitSprt = new Sprite(buttonTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+
+	exitSprt->SetNumXFrames(4)->SetNumYFrames(4)->AddAnimation("normal", 12, 12)->AddAnimation("hover", 12, 15, true)->AddAnimation("press", 15, 15)->SetScale(5)->SetAnimationDuration(100);
+
+	Button* exitButton = new Button(exitSprt, "exit");
+	exitButton->SetPosition((game->GetSettings()->screenWidth / 2) + (0.5 * exitSprt->GetScaleWidth()),
+		(game->GetSettings()->screenHeight / 2) - (exitSprt->GetScaleHeight()));
+	buttons.push_back(exitButton);
+}
+
+void Engine::VelociRun::Update() {
+	//Game States
+	if (!isGameOver && !isPaused) {
+		//Spawn obstacles
+		if (elapsedTime >= maxElapsedTime) {
+			SpawnObstacles();
+			elapsedTime = 0;
+		}
+
+		elapsedTime += game->GetGameTime();
+
+		//Scoring & Global Velocity
+		if (globalCount % 20 == 0 && globalCount != 0) {
+			gameScore += 1;
+		}
+
+		if (globalCount % 40 == 0 && globalCount != 0 && globalXVel <= 1) {
+			globalXVel += 0.005;
+			globalCount = 0;
+		}
+
+		globalCount += 1;
+
+		//Update all obstacles velocity
+		for (Obstacles* o : obstacles) {
+			o->SetVelocity(globalXVel);
+		}
+
+		//Update all bg velocity
+		for (Parallax* o : dunes) {
+			o->SetVelocity(globalXVel * 1 / 10);
+		}
+		for (Parallax* o : cactiDunes) {
+			o->SetVelocity(globalXVel * 2 / 5);
+		}
+		for (Parallax* o : ground) {
+			o->SetVelocity(globalXVel);
+		}
+
+		//Detect collision
+		for (Obstacles* o : obstacles) {
+			if (!o->IsNoUse()) {
+				if (o->GetSprite()->GetBoundingBox()->CollideWith(veloSprt->GetBoundingBox())) {
+					isGameOver = true;
+					buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+					currButtonIndex = 1;
+					buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+				}
+			}
+		}
+
+		//Display texts
+		score->SetText("Score : " + to_string(gameScore));
+		hiScore->SetText("High Score : " + to_string(currentHighScore));
+		hint->SetText("Up & Down to Jump and Duck");
+
+		//Velociraptor temp pos saver and def anim
+		vec2 oldVeloPos = veloSprt->GetPosition();
+		vx = oldVeloPos.x, vy = oldVeloPos.y;
+
+		veloSprt->PlayAnim("idle-run");
+
+		//Input detections
+		//Main menu
+		if (game->GetInputManager()->IsKeyPressed("Main-menu")) {
+			//Reset global parameters
+			elapsedTime = 0;
+			yVelocity = 0;
+			globalXVel = 0.5;
+			globalCount = 0;
+			gameScore = 0;
+			jump = false;
+			duck = false;
+
+			//Reset velociraptor's pos
+			vx = 300, vy = game->GetSettings()->screenHeight / 11;
+			veloSprt->SetPosition(vx, vy);
+
+			//Reset all obstacles
+			for (Obstacles* o : obstacles) {
+				o->SetNoUse();
+				o->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+				o->SetVelocity(globalXVel);
+			}
+			
+			//Change screen
+			ScreenManager::GetInstance(game)->SetCurrentScreen("mainmenu");
+
+			return;
+		}
+
+		//Pause
+		if (game->GetInputManager()->IsKeyPressed("Pause")) {
+			//Still haven't added a pause screen yet
+			//ScreenManager::GetInstance(game)->SetCurrentScreen("mainmenu");
+
+			//Change game state and button state
+			isPaused = true;
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			currButtonIndex = 0;
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+			return;
+		}
+
+		//Jump
+		if (game->GetInputManager()->IsKeyPressed("Jump") && !jump && !duck) {
+			//Clamping
+			float delta = game->GetGameTime();
+			float maxDelta = 1000.0f / 30.0f;
+
+			if (delta >= maxDelta) {
+				delta = maxDelta;
+			}
+			//Set gravity and yVelocity
+			float ratio = (delta / 16.7f);
+			gravity = 0.05f * ratio;
+			yVelocity = 1.0f;
+			jump = true;
+			jumpsfx->Play(false);
+		}
+		//Jump physics
+		if (vy > game->GetSettings()->screenHeight / 11) {
+			yVelocity -= gravity;
+		}
+		else if (vy < game->GetSettings()->screenHeight / 11) {
+			jump = false;
+			yVelocity = 0;
+			vy = game->GetSettings()->screenHeight / 11;
+		}
+
+		if (game->GetInputManager()->IsKeyReleased("Jump") && jump) {
+			if (yVelocity > 0.8) {
+				yVelocity = 0.8;
+			}
+		}
+
+		vy += yVelocity * game->GetGameTime();
+		veloSprt->SetPosition(vx, vy);
+
+		//Duck
+		if (game->GetInputManager()->IsKeyPressed("Duck") && !jump) {
+			//Play duck anim
+			veloSprt->PlayAnim("duck");
+			//Set bounding box size for ducking
+			veloSprt->SetBoundingBoxSize(veloSprt->GetScaleWidth() - (10 * veloSprt->GetScale()), veloSprt->GetScaleHeight() - (12 * veloSprt->GetScale()));
+			duck = true;
+		}
+
+		if (game->GetInputManager()->IsKeyReleased("Duck") && duck) {
+			//Reset BBox to default
+			veloSprt->SetBoundingBoxSize(veloSprt->GetScaleWidth() - (10 * veloSprt->GetScale()), veloSprt->GetScaleHeight() - (8 * veloSprt->GetScale()));
+			duck = false;
+		}
+
+		//Update
+		veloSprt->Update(game->GetGameTime());
+
+		for (Obstacles* o : obstacles) {
+			o->Update(game->GetGameTime());
+		}
+
+		//Update all bg
+		for (Parallax* o : dunes) {
+			o->Update(game->GetGameTime());
+		}
+		for (Parallax* o : cactiDunes) {
+			o->Update(game->GetGameTime());
+		}
+		for (Parallax* o : ground) {
+			o->Update(game->GetGameTime());
+		}
+
+	}
+	else if (isPaused) {
+		//Input detections
+		//Previous
+		if (game->GetInputManager()->IsKeyPressed("prev")) {
+			// Set previous button to normal state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			// Prev Button
+			currButtonIndex = currButtonIndex > 0 ? currButtonIndex - 2 : currButtonIndex;
+			// Set current button to hover state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+		}
+
+		//Next
+		if (game->GetInputManager()->IsKeyPressed("next")) {
+			// Set previous button to normal state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			// Next Button
+			currButtonIndex = (currButtonIndex < (int)buttons.size() - 1) ? currButtonIndex + 2 : currButtonIndex;
+			// Set current button to hover state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+		}
+
+		//Press
+		if (game->GetInputManager()->IsKeyReleased("press")) {
+			// Set current button to press state
+			Button* b = buttons[currButtonIndex];
+			b->SetButtonState(Engine::ButtonState::PRESS);
+			// If start button then go to InGame, exit button then exit
+			if ("resume" == b->GetButtonName()) {
+				//Reset Text pos
+				score->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()))->SetColor(0, 0, 0);
+
+				hiScore->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())))->SetColor(0, 0, 0);
+
+				hint->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())))->SetColor(0, 0, 0);
+
+				//Change state
+				isPaused = false;
+
+				return;
+			}
+			else if ("exit" == b->GetButtonName()) {
+				//Reset global parameters
+				elapsedTime = 0;
+				globalCount = 0;
+				gameScore = 0;
+				jump = false;
+				duck = false;
+				isPaused = false;
+
+				//Reset velociraptor's pos
+				vx = 300, vy = game->GetSettings()->screenHeight / 11;
+				veloSprt->SetPosition(vx, vy);
+
+				//Reset all obstacles
+				for (Obstacles* o : obstacles) {
+					o->SetNoUse();
+					o->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+					o->SetVelocity(globalXVel);
+				}
+
+				//Change screen
+				ScreenManager::GetInstance(game)->SetCurrentScreen("mainmenu");
+
+				//Reset Text pos
+				score->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()))->SetColor(0, 0, 0);
+
+				hiScore->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())))->SetColor(0, 0, 0);
+
+				hint->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())))->SetColor(0, 0, 0);
+
+				return;
+			}
+		}
+
+		//Update all buttons
+		for (Button* b : buttons) {
+			b->Update(game->GetGameTime());
+		}
+
+		//Display texts
+		score->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3 - score->GetFontSize() * score->GetScale() * 1.5)->SetText("Score : " + to_string(gameScore))->SetColor(0, 0, 0)->CenterTextX();
+
+		hiScore->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3 - hiScore->GetFontSize() * hiScore->GetScale() * 2.5)->SetText("High Score : " + to_string(currentHighScore))->SetColor(0, 0, 0)->CenterTextX();
+
+		hint->SetText("");
+	}
+	else if (isGameOver) {
+		//Reset parameter
+		yVelocity = 0;
+		globalXVel = 0.5;
+
+		//High score check
+		if (gameScore > currentHighScore) {
+			WriteHighScore(gameScore);
+			currentHighScore = ReadHighScore();
+		}
+
+		//Input detections
+		//Previous
+		if (game->GetInputManager()->IsKeyPressed("prev")) {
+			// Set previous button to normal state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			// Prev Button
+			currButtonIndex = currButtonIndex > 1 ? currButtonIndex - 1 : currButtonIndex;
+			// Set current button to hover state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+		}
+
+		//Next
+		if (game->GetInputManager()->IsKeyPressed("next")) {
+			// Set previous button to normal state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+			// Next Button
+			currButtonIndex = (currButtonIndex < (int)buttons.size() - 1) ? currButtonIndex + 1 : currButtonIndex;
+			// Set current button to hover state
+			buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+		}
+
+		//Press
+		if (game->GetInputManager()->IsKeyReleased("press")) {
+			// Set current button to press state
+			Button* b = buttons[currButtonIndex];
+			b->SetButtonState(Engine::ButtonState::PRESS);
+			// If start button then go to InGame, exit button then exit
+			if ("restart" == b->GetButtonName()) {
+				//Reset global parameters
+				elapsedTime = 0;
+				globalCount = 0;
+				gameScore = 0;
+				jump = false;
+				duck = false;
+				isGameOver = false;
+
+				//Reset velociraptor's pos
+				vx = 300, vy = game->GetSettings()->screenHeight / 11;
+				veloSprt->SetPosition(vx, vy);
+
+				//Reset all obstacles
+				for (Obstacles* o : obstacles) {
+					o->SetNoUse();
+					o->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+					o->SetVelocity(globalXVel);
+				}
+
+				//Reset Text pos
+				score->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()))->SetColor(0, 0, 0);
+
+				hiScore->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())))->SetColor(0, 0, 0);
+
+				hint->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())))->SetColor(0, 0, 0);
+
+				return;
+			}
+			else if ("exit" == b->GetButtonName()) {
+				//Reset global parameters
+				elapsedTime = 0;
+				globalCount = 0;
+				gameScore = 0;
+				jump = false;
+				duck = false;
+				isGameOver = false;
+
+				//Reset velociraptor's pos
+				vx = 300, vy = game->GetSettings()->screenHeight / 11;
+				veloSprt->SetPosition(vx, vy);
+
+				//Reset all obstacles
+				for (Obstacles* o : obstacles) {
+					o->SetNoUse();
+					o->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+					o->SetVelocity(globalXVel);
+				}
+
+				//Change screen
+				ScreenManager::GetInstance(game)->SetCurrentScreen("mainmenu");
+
+				//Reset Text pos
+				score->SetPosition(5, game->GetSettings()->screenHeight - (5 + score->GetFontSize() * score->GetScale()))->SetColor(0, 0, 0);
+
+				hiScore->SetPosition(5, game->GetSettings()->screenHeight - (2 * (5 + hiScore->GetFontSize() * hiScore->GetScale())))->SetColor(0, 0, 0);
+
+				hint->SetPosition(5, game->GetSettings()->screenHeight - (3 * (5 + hint->GetFontSize() * hint->GetScale())))->SetColor(0, 0, 0);
+
+				return;
+			}
+		}
+		
+		//Update all buttons
+		for (Button* b : buttons) {
+			b->Update(game->GetGameTime());
+		}
+
+		//Display texts
+		score->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3 - score->GetFontSize() * score->GetScale() * 1.5)->SetText("Score : " + to_string(gameScore))->SetColor(0, 0, 0)->CenterTextX();
+
+		hiScore->SetPosition(game->GetSettings()->screenWidth / 2, game->GetSettings()->screenHeight * 2 / 3 - hiScore->GetFontSize() * hiScore->GetScale() * 2.5)->SetText("High Score : " + to_string(currentHighScore))->SetColor(0, 0, 0)->CenterTextX();
+
+		hint->SetText("");
+	}
+}
+
+void Engine::VelociRun::Draw() {
+	//Sky
+	bgSprt->Draw();
+
+	//All bg
+	for (Parallax* o : dunes) {
+		o->Draw();
+	}
+	for (Parallax* o : cactiDunes) {
+		o->Draw();
+	}
+	for (Parallax* o : ground) {
+		o->Draw();
+	}
+
+	//Velociraptor
+	shadow->Draw();
+	veloSprt->Draw();
+
+	//All obstacles
+	for (Obstacles* o : obstacles) {
+		o->Draw();
+	}
+	if (isPaused) {
+		overlay->Draw();
+
+		buttons[0]->Draw();
+		buttons[2]->Draw();
+
+		pause->Draw();
+	}
+
+	if (isGameOver) {
+		overlay->Draw();
+		
+		buttons[1]->Draw();
+		buttons[2]->Draw();
+
+		gameOver->Draw();
+	}
+
+	//Texts
+	score->Draw();
+	hiScore->Draw();
+	hint->Draw();
+}
+
+Engine::Sprite* Engine::VelociRun::CreateObsSprite(Texture* texture) {
+	return (new Sprite(texture, game->GetDefaultSpriteShader(), game->GetDefaultQuad()))->SetNumXFrames(3)->SetNumYFrames(2)->AddAnimation("obstacle1", 0, 0)->AddAnimation("obstacle2", 1, 1)->AddAnimation("obstacle3", 2, 2)->AddAnimation("obstacle4", 3, 4)->SetScale(4)->SetAnimationDuration(500);
+}
+
+Engine::Sprite* Engine::VelociRun::CreateShadowSprite(Texture* texture) {
+	return (new Sprite(texture, game->GetDefaultSpriteShader(), game->GetDefaultQuad()))->SetScale(4)->SetPosition(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight / 11);
+}
+
+void Engine::VelociRun::SpawnObstacles() {
+	int spawnCount = 0;
+	for (Obstacles* o : obstacles) {
+		if (spawnCount == numObjectPerSpawn) {
+			break;
+		}
+		if (o->IsNoUse()) {
+			unsigned int random = 1 + (rand() % 4);
+			//x and y position
+			float x = (float)(game->GetSettings()->screenWidth);
+			float y = game->GetSettings()->screenHeight / 11;
+			//y position of airborne obstacles
+			if (random > 3) {
+				y = game->GetSettings()->screenHeight / 11 + 70;
+			}
+			//Set position and play random animation
+			o->SetUse()->SetPosition(x, y);
+			o->GetSprite()->PlayAnim("obstacle" + to_string(random))->ResetAnimFrame();
+			spawnCount++;
+		}
+	}
+}
+
+Engine::Sprite* Engine::VelociRun::CreateBgSprite(string name) {
+	Texture* bgTex = new Texture(name);
+
+	return(new Sprite(bgTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad()))->SetSize(game->GetSettings()->screenWidth, game->GetSettings()->screenHeight)->SetPosition(0, 0);
+}
+
+//Read
+int Engine::VelociRun::ReadHighScore() {
+	std::ifstream file("VeloData.txt");
+	std::string line;
+	int highScore = 0;
+
+	if (file.is_open()) {
+		getline(file, line);  // Read the first line "highscore: 0"
+		size_t pos = line.find_last_of(" ");  // Find the space before the number
+		if (pos != std::string::npos) {
+			highScore = std::stoi(line.substr(pos + 1));  // Extract the number after the space
+		}
+		file.close();
+	}
+
+	return highScore;  // Return the extracted high score
+}
+
+//Write
+void Engine::VelociRun::WriteHighScore(int newHighScore) {
+	std::ofstream file("VeloData.txt");
+
+	if (file.is_open()) {
+		file << "highscore: " << newHighScore;  // Write "highscore: " followed by the new score
+		file.close();
+	}
+}
+        </code></pre>
+    </div>
+	<p class="description"></p>
+	<p class="description">Veloci Run.h</p>
+    <div class="code-box">
+		<pre><code>
+#ifndef VELOCIRUN_H
+#define VELOCIRUN_H
+
+#include "Game.h"
+#include "Setting.h"
+#include "Texture.h"
+#include "Sprite.h"
+#include "Text.h"
+#include "Button.h"
+#include "Music.h"
+#include "Sound.h"
+#include <vector>
+#include <fstream>
+#include <string>
+#include <cstdlib>
+#include <ctime>
+#include "Obstacles.h"
+#include "ParallaxBg.h"
+#include "Screen.h"
+#include "ScreenManager.h"
+
+namespace Engine {
+	class VelociRun :public Engine::Screen {
+	public:
+		VelociRun();
+		~VelociRun();
+		virtual void Init();
+		virtual void Update();
+		virtual void Draw();
+	private:
+		//Textures
+		Texture* bgTex = NULL;
+		Texture* darkOverlay = NULL;
+		Texture* veloTex = NULL;
+		//Sprites
+		Sprite* bgSprt = NULL;
+		Sprite* overlay = NULL;
+		Sprite* veloSprt = NULL;
+		Sprite* shadow = NULL;
+		//Texts
+		Text* score = NULL;
+		Text* hiScore = NULL;
+		Text* gameOver = NULL;
+		Text* pause = NULL;
+		Text* hint = NULL;
+		//Audio
+		Music* bgm = NULL;
+		Sound* jumpsfx = NULL;
+
+		//Object Pooling
+		Engine::Sprite* CreateObsSprite(Texture* texture);
+		Engine::Sprite* CreateShadowSprite(Texture* texture);
+		void SpawnObstacles();
+		vector<Obstacles*> obstacles;
+		float elapsedTime = 0, maxElapsedTime = 0;
+		float numObjectsInPool = 0, numObjectPerSpawn = 0;
+
+
+		//Velociraptor
+		float yVelocity = 0, gravity = 0, vx = 0, vy = 0;
+		bool jump = false, duck = false;
+
+		//Gameplay
+		float globalXVel = 0;
+		int globalCount = 0, gameScore = 0;
+		bool isGameOver = false, isPaused = false;
+
+		//Background
+		Engine::Sprite* CreateBgSprite(string name);
+
+		vector<Parallax*> dunes, cactiDunes, ground;
+		Parallax* tempPlx;
+
+		//Buttons
+		vector<Button*> buttons;
+		int currButtonIndex = 0;
+
+		//Read & write
+		int ReadHighScore();
+		void WriteHighScore(int newHighScore);
+		int currentHighScore;
+	};
+}
+
+#endif
+		</code></pre>
+	</div>
+	<p class="description"></p>
+	<p class="description">VRunHub.cpp</p>
+    <div class="code-box">
+		<pre><code>
+#include "VRunHub.h"
+
+Engine::VRunHub::VRunHub(Setting* setting) :Engine::Game(setting) {
+	setting->windowTitle = "VelociRun";
+}
+
+Engine::VRunHub::~VRunHub(){}
+
+void Engine::VRunHub::Init() {
+	Engine::ScreenManager::GetInstance(this)->AddScreen("mainmenu", new VRunMenu())->AddScreen("ingame", new VelociRun())->/*AddScreen("settings", new VRunSettings())->*/SetCurrentScreen("mainmenu");
+}
+
+void Engine::VRunHub::Update() {
+	Engine::ScreenManager::GetInstance(this)->Update();
+}
+
+void Engine::VRunHub::Render() {
+	Engine::ScreenManager::GetInstance(this)->Draw();
+}
+		</code></pre>
+	</div>
+	<p class="description"></p>
+	<p class="description">VRunHub.h</p>
+    <div class="code-box">
+		<pre><code>
+#ifndef VR_HUB_H
+#define VR_HUB_H
+
+#include "Game.h"
+#include "Setting.h"
+#include "VelociRun.h"
+#include "VRunMenu.h"
+//#include "VRunSettings.h"
+
+namespace Engine {
+	class VRunHub :public Engine::Game {
+	public:
+		VRunHub(Setting* setting);
+		~VRunHub();
+		virtual void Init();
+		virtual void Update();
+		virtual void Render();
+	};
+}
+
+#endif
+		</code></pre>
+	</div>
+	<p class="description"></p>
+	<p class="description">VRunMenu.cpp</p>
+    <div class="code-box">
+		<pre><code>
+#include "VRunMenu.h"
+
+Engine::VRunMenu::VRunMenu() {
+	bgSprite = NULL;
+	titleTex = NULL;
+	titleSprt = NULL;
+}
+
+void Engine::VRunMenu::Init() {
+	//Create background
+	Texture* bgTexture = new Texture("Desert_Background.png");
+	bgSprite = (new Sprite(bgTexture, game->GetDefaultSpriteShader(), game->GetDefaultQuad()))->SetSize((float)game->GetSettings()->screenWidth, (float)game->GetSettings()->screenHeight);
+
+	//Button texture
+	Texture* buttonTex = new Texture("Main_Buttons.png");
+
+	//Start button
+	Sprite* startSprt = new Sprite(buttonTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+
+	startSprt->SetNumXFrames(4)->SetNumYFrames(3)->AddAnimation("normal", 0, 0)->AddAnimation("hover", 0, 3, true)->AddAnimation("press", 3, 3)->SetScale(5)->SetAnimationDuration(100);
+
+	Button* startButton = new Button(startSprt, "start");
+	startButton->SetPosition((game->GetSettings()->screenWidth / 2) - (startSprt->GetScaleWidth() / 2),
+		400);
+	buttons.push_back(startButton);
+
+	//Settings button
+
+	//Exit button
+	Sprite* exitSprt = new Sprite(buttonTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+
+	exitSprt->SetNumXFrames(4)->SetNumYFrames(3)->AddAnimation("normal", 8, 8)->AddAnimation("hover", 8, 11, true)->AddAnimation("press", 11, 11)->SetScale(5)->SetAnimationDuration(100);
+
+	Button* exitButton = new Button(exitSprt, "exit");
+	exitButton->SetPosition((game->GetSettings()->screenWidth / 2) - (exitSprt->GetScaleWidth() / 2),
+		250);
+	buttons.push_back(exitButton);
+
+	//Set start button as default
+	currButtonIndex = 0;
+	buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+
+	//Create title
+	titleTex = new Texture("VelociRun_Title.png");
+
+	titleSprt = new Sprite(titleTex, game->GetDefaultSpriteShader(), game->GetDefaultQuad());
+	titleSprt->SetPosition(((game->GetSettings()->screenWidth / 2) - (titleSprt->GetScaleWidth() / 2)), game->GetSettings()->screenHeight * 7.5 / 10);
+
+	//Input Mapping
+	game->GetInputManager()->AddInputMapping("prev", SDLK_UP)->AddInputMapping("next", SDLK_DOWN)->AddInputMapping("press", SDLK_RETURN);
+
+}
+
+void Engine::VRunMenu::Update() {
+	//Input detections
+	//Previous
+	if (game->GetInputManager()->IsKeyPressed("prev")) {
+		// Set previous button to normal state
+		buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+		// Prev Button
+		currButtonIndex = currButtonIndex > 0 ? currButtonIndex - 1 : currButtonIndex;
+		// Set current button to hover state
+		buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+	}
+
+	//Next
+	if (game->GetInputManager()->IsKeyPressed("next")) {
+		// Set previous button to normal state
+		buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::NORMAL);
+		// Next Button
+		currButtonIndex = (currButtonIndex < (int)buttons.size() - 1) ? currButtonIndex + 1 : currButtonIndex;
+		// Set current button to hover state
+		buttons[currButtonIndex]->SetButtonState(Engine::ButtonState::HOVER);
+	}
+
+	//Press
+	if (game->GetInputManager()->IsKeyPressed("press")) {
+		// Set current button to press state
+		Button* b = buttons[currButtonIndex];
+		b->SetButtonState(Engine::ButtonState::PRESS);
+		// If start button then go to InGame, exit button then exit
+		if ("start" == b->GetButtonName()) {
+			ScreenManager::GetInstance(game)->SetCurrentScreen("ingame");
+		}
+		else if ("exit" == b->GetButtonName()) {
+			game->SetState(Engine::State::EXIT);
+		}
+	}
+
+	//Update all buttons
+	for (Button* b : buttons) {
+		b->Update(game->GetGameTime());
+	}
+}
+
+void Engine::VRunMenu::Draw() {
+	//Render background
+	bgSprite->Draw();
+	
+	//Render all buttons
+	for (Button* b : buttons) {
+		b->Draw();
+	}
+	//Render title 
+	titleSprt->Draw();
+}
+		</code></pre>
+	</div>
+	<p class="description"></p>
+	<p class="description">VRunMenu.h</p>
+    <div class="code-box">
+		<pre><code>
+#ifndef VR_MENU_H
+#define VR_MENU_H
+
+#include "Sprite.h"
+#include "Button.h"
+#include "Text.h"
+#include "Screen.h"
+#include "ScreenManager.h"
+
+namespace Engine {
+	class VRunMenu :public Engine::Screen {
+	public:
+		VRunMenu();
+		void Init();
+		void Update();
+		void Draw();
+	private:
+		//Background
+		Sprite* bgSprite;
+
+		//Buttons
+		vector<Button*> buttons;
+		int currButtonIndex = 0;
+
+		//Title
+		Texture* titleTex;
+		Sprite* titleSprt;
+	};
+}
+
+#endif
+		</code></pre>
+	</div>
+	<p class="description"></p>
+	<p class="description">VRunSettings.h</p>
+    <div class="code-box">
+		<pre><code>
+#ifndef VR_SET_H
+#define VR_SET_H
+
+#include "Screen.h"
+#include "ScreenManager.h"
+
+#endif
+		</code></pre>
+	</div>
+
+<section class="ourteam"id="ourteam">
+	<h3 class="sub-heading">Our Team</h3>
+	<h1 class="heading">W Studio</h1>
+
+</section>
